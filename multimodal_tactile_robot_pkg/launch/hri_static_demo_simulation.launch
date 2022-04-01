@@ -1,0 +1,31 @@
+<launch>
+
+  <!-- By default, we are not in debug mode -->
+  <arg name="debug" default="false" />
+
+  <!-- GDB Debug Option -->
+  <arg unless="$(arg debug)" name="launch_prefix" value="" />
+  <arg     if="$(arg debug)" name="launch_prefix"
+     value="gdb -x $(find ur3_moveit_config)/launch/gdb_settings.gdb --ex run --args" />
+
+  <node name="hri_static_demo" pkg="robot_control" type="hri_static_demo" respawn="false" launch-prefix="$(arg launch_prefix)" output="screen">
+  </node>
+
+  <node name="gripper_demo_test" pkg="robot_control" type="gripper_demo_test" respawn="false" launch-prefix="$(arg launch_prefix)" output="screen"> 
+  </node>
+
+  <include file="$(find ur_gazebo)/launch/ur3.launch" />
+
+  <include file="$(find ur3_moveit_config)/launch/ur3_moveit_planning_execution.launch">
+    <arg name="sim" value="true" />
+  </include>
+
+  <include file="$(find ur3_moveit_config)/launch/moveit_rviz.launch">
+    <arg name="config" value="true" />
+  </include>
+
+ <!-- <node pkg="tf" type="static_transform_publisher" name="camera_frame_broadcaster" args="0.1 0 0.05 -0.5 0.5 -0.5 0.5 ee_link camera_frame 100" /> -->
+
+  <node pkg="tf" type="static_transform_publisher" name="camera_frame_broadcaster" args="0.1 0 0.05 0 0 0 1 ee_link camera_frame 100" />
+
+</launch>

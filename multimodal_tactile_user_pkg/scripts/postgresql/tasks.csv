@@ -1,0 +1,6 @@
+task_id,task_name,screw_in,allen_in,hammer,hand_screw_In
+0,assemble_box,,,,
+1,stack_tower,,,,
+2,assemble_complex_box,,,,
+3,assemble_complex_box_manual,,,,
+4,assemble_chair,,,,

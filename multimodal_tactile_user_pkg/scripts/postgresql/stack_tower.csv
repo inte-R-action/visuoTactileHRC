@@ -1,0 +1,6 @@
+action_no,action_id,action_name,default_time,user_type,prev_dependent
+0,,stack_yellow_small_block,,robot,1
+1,,stack_red_small_block,,robot,1
+2,,stack_blue_small_block,,robot,1
+3,,stack_green_small_block,,robot,1
+4,,remove_stack,,robot,1

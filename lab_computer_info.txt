@@ -1,0 +1,2 @@
+Postgresql install and run without root:
+https://www.endpoint.com/blog/2013/06/12/installing-postgresql-without-root
