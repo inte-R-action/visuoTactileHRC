@@ -61,7 +61,7 @@ class shimmer():
     def __init__(self, q):
         self._ready = False
         self._connect_error = True
-        self._connection = None
+        #self._connection = None
         self._connected = False
         self._ID = SHIM_IDs[q]
         self._location = POSITIONS[q]
@@ -102,7 +102,7 @@ class shimmer():
                 return False
         return True
 
-    def initiate(self):
+    def initiate(self): 
         while (not self._connected) & (not self._connect_error) & (not quit_IMU):
             time.sleep(5)
             try:

@@ -7,7 +7,7 @@ import argparse
 import traceback
 from diagnostic_msgs.msg import KeyValue
 from pub_classes import diag_class, move_class
-from sam_custom_messages.msg import user_prediction, capability, diagnostics
+from multimodal_tactile_custom_msgs.msg import user_prediction, capability, diagnostics
 from std_msgs.msg import String
 from postgresql.database_funcs import database
 import pandas as pd
@@ -78,7 +78,7 @@ class future_predictor():
             task_data = pd.DataFrame(task_actions, columns=task_cols)
             self.task_overview = task_data
 
-            # Get last action no completed by robot
+            # Get last action not completed by robot
             try:
                 last_robot_action_no = last_robot_stats.loc[last_robot_stats["user_id"]==user_id]["last_completed_action_no"].values[0]
 

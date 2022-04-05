@@ -10,7 +10,7 @@ import rospy
 from std_msgs.msg import Int8, Float64, String
 from pub_classes import diag_class, act_class, threeIMUs_class
 import csv
-from sam_custom_messages.msg import diagnostics, skeleton
+from multimodal_tactile_custom_msgs.msg import diagnostics, skeleton
 from global_data import SKELETON_FRAMES, ALL_ACTIONS
 from geometry_msgs.msg import Pose
 from statistics import mean, stdev

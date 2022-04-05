@@ -6,10 +6,8 @@ import rospy
 import numpy as np
 import matplotlib.pyplot as plt
 from pub_classes import act_class
-from process_skel_data import process_skel_data
 from tensorflow.keras.models import load_model
 import tensorflow_addons as tfa
-from global_data import PCA_COMPS
 import csv
 
 plt.ion()
@@ -30,27 +28,24 @@ class perception_module:
         self.imu_update_t = None
         self.imu_means = None
         self.imu_scales = None
-        self.load_imu_scale_parameters()
-        self.new_skel_data = np.zeros((1, 15*7))
-        self.skel_data = np.zeros((WIN_LEN, 15*7))
-        self.skel_update_t = None
 
-        self.screw_classifier = load_model('./sam_nodes/scripts/models_parameters/Screw In_model_1_2str_i(CCPCCP)s(CCPCCP)c(HHHD)_inclAllNull.h5')
-        self.allen_classifier = load_model('./sam_nodes/scripts/models_parameters/Allen In_model_1_2str_i(CCPCCP)s(CCPCCP)c(HHHD)_inclAllNull.h5')
-        self.hammer_classifier = load_model('./sam_nodes/scripts/models_parameters/Hammer_model_1_2str_i(CCPCCP)s(CCPCCP)c(HHHD)_inclAllNull.h5')
-        self.hand_classifier = load_model('./sam_nodes/scripts/models_parameters/Hand Screw In_model_1_2str_i(CCPCCP)s(CCPCCP)c(HHHD)_inclAllNull.h5')
-
+        folder = './multimodal_tactile_user_pkg/scripts/models_parameters/'
+        self.screw_classifier = load_model(folder+'Screw In_model_1_2str_i(CCPCCP)s(CCPCCP)c(HHHD)_inclAllNull.h5')
+        self.allen_classifier = load_model(folder+'Allen In_model_1_2str_i(CCPCCP)s(CCPCCP)c(HHHD)_inclAllNull.h5')
+        self.hammer_classifier = load_model(folder+'Hammer_model_1_2str_i(CCPCCP)s(CCPCCP)c(HHHD)_inclAllNull.h5')
+        self.hand_classifier = load_model(folder+'Hand Screw In_model_1_2str_i(CCPCCP)s(CCPCCP)c(HHHD)_inclAllNull.h5')
         self.screw_pred = 0
         self.allen_pred = 0
         self.hammer_pred = 0
         self.hand_pred = 0
+        self.load_imu_scale_parameters(folder)
 
         self.plt_pred = False
         self.act_obj = act_class(frame_id=self.frame_id, class_count=4, user_id=self.id, user_name=self.name, queue=10)
 
-    def load_imu_scale_parameters(self):
+    def load_imu_scale_parameters(self, folder):
         # load scaling parameters
-        scale_file = "./sam_nodes/scripts/models_parameters/imu_scale_params_winlen3_transitionsTrue_1v1_inclAllNull.csv" # file with normalisation parameters
+        scale_file = folder + "imu_scale_params_winlen3_transitionsTrue_1v1_inclAllNull.csv" # file with normalisation parameters
         with open(scale_file, newline='') as f:
             reader = csv.reader(f)
             data = np.array(list(reader))
@@ -58,8 +53,7 @@ class perception_module:
             self.scales = data[1:, -1].astype(float)
 
     def predict_actions(self):
-        new_skel_data = process_skel_data(self.skel_data)
-        predict_data = [self.imu_data[np.newaxis, ...], new_skel_data[np.newaxis, ...]]
+        predict_data = self.imu_data[np.newaxis, ...]
 
         self.screw_pred = self.screw_classifier.predict(predict_data)[0][0]
         self.allen_pred = self.allen_classifier.predict(predict_data)[0][0]
@@ -72,19 +66,16 @@ class perception_module:
         if self.plt_pred:
             self.plot_prediction(prediction)
 
+    def predict_gestures(self):
+        pass
+
     def add_imu_data(self, data, time):
         self.imu_update_t = time
         self.new_imu_data = (data-self.means)/self.scales
 
-    def add_skel_data(self, data, time):
-        self.skel_update_t = time
-        self.new_skel_data = data
-
     def update_data_window(self):
         self.imu_data = np.vstack((self.imu_data, self.new_imu_data))
         self.imu_data = self.imu_data[-WIN_LEN:, :]
-        self.skel_data = np.vstack((self.skel_data, self.new_skel_data))
-        self.skel_data = self.skel_data[-WIN_LEN:, :]
 
     def plot_prediction(self, prediction):
         pos = np.arange(len(self.actions)-1)

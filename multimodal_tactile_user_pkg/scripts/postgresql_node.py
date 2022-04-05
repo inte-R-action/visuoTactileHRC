@@ -9,7 +9,7 @@ import traceback
 from postgresql.database_funcs import database
 from pub_classes import diag_class
 # from sam_nodes.scripts.robot_controller import sys_stat_callback
-from sam_custom_messages.msg import diagnostics
+from multimodal_tactile_custom_msgs.msg import diagnostics
 from global_data import ACTIONS, TASKS
 from os import listdir
 from os.path import isfile, join
@@ -17,7 +17,7 @@ import csv
 import pandas as pd
 from statistics import mean
 
-os.chdir(os.path.expanduser("~/catkin_ws/src/multimodal_human_robot_collaboration/"))
+os.chdir(os.path.expanduser("~/catkin_ws/src/visuoTactileHRC/"))
 
 #Define tables: tables = [{name, [col1 cmd, col2 cmd, ...]}, ]
 tables_to_make = ['tasks', 'actions', 'users', 'episodes', 'assemble_box', 'assemble_chair', 'assemble_complex_box', 'assemble_complex_box_manual', 'stack_tower', 'future_action_predictions', 'robot_action_timings']

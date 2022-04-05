@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 
 import rospy
-from sam_custom_messages.msg import object_state, screw_count
+from multimodal_tactile_custom_msgs.msg import object_state, screw_count
 from std_msgs.msg import Int8
 from statistics import mean
 from decimal import Decimal, ROUND_HALF_UP

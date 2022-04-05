@@ -6,7 +6,7 @@ import argparse
 import traceback
 from diagnostic_msgs.msg import KeyValue
 from pub_classes import diag_class, capability_class
-from sam_custom_messages.msg import capability
+from multimodal_tactile_custom_msgs.msg import capability
 from postgresql.database_funcs import database
 import pandas as pd
 import datetime

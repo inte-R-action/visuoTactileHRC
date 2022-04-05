@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 
 import rospy
-from sam_custom_messages.msg import object_state
+from multimodal_tactile_custom_msgs.msg import object_state
 from std_msgs.msg import String
 
 

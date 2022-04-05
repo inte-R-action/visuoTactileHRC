@@ -10,7 +10,7 @@ import rospy
 from std_msgs.msg import Int8, Float64, String
 from pub_classes import diag_class, act_class
 import csv
-from sam_custom_messages.msg import diagnostics
+from multimodal_tactile_custom_msgs.msg import diagnostics
 
 
 os.chdir(os.path.expanduser("~/catkin_ws/src/multimodal_human_robot_collaboration/sam_nodes/scripts/"))

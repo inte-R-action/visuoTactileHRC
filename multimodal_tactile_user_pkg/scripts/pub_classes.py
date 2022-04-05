@@ -3,7 +3,7 @@
 import rospy
 from std_msgs.msg import String
 from geometry_msgs.msg import Accel, Vector3
-from sam_custom_messages.msg import object_state, diagnostics, current_action, robot_move, user_prediction, capability, screw_count, threeIMUs
+from multimodal_tactile_custom_msgs.msg import object_state, diagnostics, current_action, robot_move, user_prediction, capability, screw_count, threeIMUs
 from diagnostic_msgs.msg import KeyValue
 
 

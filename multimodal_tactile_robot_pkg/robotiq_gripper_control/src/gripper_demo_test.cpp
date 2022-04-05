@@ -22,7 +22,7 @@
 #include "std_msgs/Int32.h"
 #include <unistd.h>
 #include <map>
-#include "sam_custom_messages/diagnostics.h"
+#include "multimodal_tactile_custom_msgs/diagnostics.h"
 
 using namespace std;
 
@@ -76,8 +76,8 @@ int main(int argc, char** argv)
 
     ros::NodeHandle node_handle;
 
-    ros::Publisher diag_obj = node_handle.advertise<sam_custom_messages::diagnostics>("SystemStatus", 10);
-    sam_custom_messages::diagnostics diag_msg;
+    ros::Publisher diag_obj = node_handle.advertise<multimodal_tactile_custom_msgs::diagnostics>("SystemStatus", 10);
+    multimodal_tactile_custom_msgs::diagnostics diag_msg;
     diag_msg.Header.stamp = ros::Time::now();
     diag_msg.Header.seq = 0;
     diag_msg.Header.frame_id = frame_id;

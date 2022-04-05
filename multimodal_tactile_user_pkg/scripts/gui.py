@@ -15,7 +15,7 @@ from sympy import E, EX
 import rospy
 from diagnostic_msgs.msg import KeyValue
 from pub_classes import diag_class, move_class, act_class
-from sam_custom_messages.msg import user_prediction, capability, diagnostics, current_action, screw_count
+from multimodal_tactile_custom_msgs.msg import user_prediction, capability, diagnostics, current_action, screw_count
 from std_msgs.msg import String
 from postgresql.database_funcs import database
 import os
@@ -25,10 +25,10 @@ from global_data import ACTIONS, TASKS, DEFAULT_TASK, inclAdjParam
 import argparse
 import rosnode
 import threading
-from system_dreaming_phase import enter_dreaming_phase
 
-os.chdir(os.path.expanduser(
-    "~/catkin_ws/src/multimodal_human_robot_collaboration/sam_nodes/scripts"))
+# os.chdir(os.path.expanduser(
+#     "~/catkin_ws/src/multimodal_human_robot_collaboration/sam_nodes/scripts"))
+os.chdir(os.path.dirname(__file__))
 
 # Argument parsing
 parser = argparse.ArgumentParser(
