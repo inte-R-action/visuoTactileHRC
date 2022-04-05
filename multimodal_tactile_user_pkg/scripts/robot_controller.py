@@ -20,6 +20,7 @@ database_stat = 1
 user_node_stat = 1
 start_trial = False
 next_action = False
+id_check = False
 
 
 def sys_stat_callback(data):
@@ -36,11 +37,41 @@ def sys_stat_callback(data):
 
 def sys_cmd_callback(msg):
     """callback for system command messages"""
-    global start_trial, next_action
+    global start_trial, next_action, id_check
     if msg.data == 'start':
         start_trial = True
     elif msg.data == 'next_action':
         next_action = True
+    elif msg.data[0:19] == 'user_identification':
+        id_check = True
+
+
+def send_robot_home(predictor, move_obj):
+    print("Sending robot home")
+    # Wait for confirmation task has been received
+    while (predictor.robot_status != 'home') and (not rospy.is_shutdown()):
+        move_obj.publish('home')
+    predictor.robot_start_t = datetime.now().time()
+    predictor.done = False
+    # Wait for confirmation task has been completed
+    while (not predictor.done) and (not rospy.is_shutdown()):
+        time.sleep(0.01)
+    # move_obj.publish('')
+    return True
+
+
+def id_check_position(predictor, move_obj):
+    print("Sending robot to check ID")
+    # Wait for confirmation task has been received
+    while (predictor.robot_status != 'id_check') and (not rospy.is_shutdown()):
+        move_obj.publish('id_check')
+    predictor.robot_start_t = datetime.now().time()
+    predictor.done = False
+    # Wait for confirmation task has been completed
+    while (not predictor.done) and (not rospy.is_shutdown()):
+        time.sleep(0.01)
+    # move_obj.publish('')
+    return True
 
 
 class future_predictor():
@@ -258,16 +289,20 @@ def robot_control_node():
     predictor = future_predictor()
     robot_task = robot_solo_task()
     move_obj = move_class(frame_id=frame_id, queue=10)
+    
 
     rospy.Subscriber("RobotStatus", String, predictor.robot_stat_callback)
 
     rate = rospy.Rate(1)  # 1hz
     #db = database()
     home = False
-
+    home = send_robot_home(predictor, move_obj)
     print("Ready for trial to start")
     while (not start_trial) and (not rospy.is_shutdown()):
         diag_obj.publish(0, "Waiting for trial to start")
+        if id_check:
+            id_check_position(predictor, move_obj)
+            id_check = False
         time.sleep(0.1)
 
     while not rospy.is_shutdown():
@@ -320,17 +355,8 @@ def robot_control_node():
                     # else wait for next colab action
                     predictor.task_now = None
                     predictor.action_no_now = None
-                    print("Sending robot home")
-                    # Wait for confirmation task has been received
-                    while (predictor.robot_status != 'home') and (not rospy.is_shutdown()):
-                        move_obj.publish('home')
-                    predictor.robot_start_t = datetime.now().time()
-                    predictor.done = False
-                    # Wait for confirmation task has been completed
-                    while (not predictor.done) and (not rospy.is_shutdown()):
-                        time.sleep(0.01)
-                    # move_obj.publish('')
-                    home = True
+                    home = send_robot_home(predictor, move_obj)
+                    
 
             diag_obj.publish(0, "Running")
             rospy.loginfo(f"{frame_id} active")

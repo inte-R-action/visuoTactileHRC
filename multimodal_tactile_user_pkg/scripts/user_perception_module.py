@@ -9,6 +9,8 @@ from pub_classes import act_class
 from tensorflow.keras.models import load_model
 import tensorflow_addons as tfa
 import csv
+from global_data import GESTURES
+from std_msgs.msg import String
 
 plt.ion()
 
@@ -30,6 +32,7 @@ class perception_module:
         self.imu_scales = None
 
         folder = './multimodal_tactile_user_pkg/scripts/models_parameters/'
+        self.gesture_classifier = load_model(folder+'')
         self.screw_classifier = load_model(folder+'Screw In_model_1_2str_i(CCPCCP)s(CCPCCP)c(HHHD)_inclAllNull.h5')
         self.allen_classifier = load_model(folder+'Allen In_model_1_2str_i(CCPCCP)s(CCPCCP)c(HHHD)_inclAllNull.h5')
         self.hammer_classifier = load_model(folder+'Hammer_model_1_2str_i(CCPCCP)s(CCPCCP)c(HHHD)_inclAllNull.h5')
@@ -41,7 +44,8 @@ class perception_module:
         self.load_imu_scale_parameters(folder)
 
         self.plt_pred = False
-        self.act_obj = act_class(frame_id=self.frame_id, class_count=4, user_id=self.id, user_name=self.name, queue=10)
+        self.act_obj = act_class(frame_id=self.frame_id+'_actions', class_count=4, user_id=self.id, user_name=self.name, queue=10)
+        self.ges_obj = act_class(frame_id=self.frame_id+'_gestures', class_count=len(GESTURES), user_id=self.id, user_name=self.name, queue=10)
 
     def load_imu_scale_parameters(self, folder):
         # load scaling parameters
@@ -67,7 +71,10 @@ class perception_module:
             self.plot_prediction(prediction)
 
     def predict_gestures(self):
-        pass
+        predict_data = self.imu_data[np.newaxis, ...]
+
+        self.gesture_pred = self.gesture_classifier.predict(predict_data)
+        self.ges_obj.publish(self.gesture_pred)
 
     def add_imu_data(self, data, time):
         self.imu_update_t = time

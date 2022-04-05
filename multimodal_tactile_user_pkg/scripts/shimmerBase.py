@@ -24,7 +24,7 @@ parser = argparse.ArgumentParser(
     description='Base structure for connecting and streaming data from Shimmer 3 IMU sensor')
 parser.add_argument('--user_name', '-N',
                     help='Set name of user, default: unknown',
-                    default='j',
+                    default='unknown',
                     action="store_true")
 parser.add_argument('--user_id', '-I',
                     help='Set id of user, default: None',

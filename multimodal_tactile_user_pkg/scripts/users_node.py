@@ -13,7 +13,7 @@ from datetime import datetime
 import pandas as pd
 from postgresql.database_funcs import database
 import os
-from global_data import ACTIONS, TASKS, DEFAULT_TASK
+from global_data import ACTIONS, TASKS, DEFAULT_TASK, GESTURES
 import threading
 
 os.chdir(os.path.expanduser("~/catkin_ws/src/visuoTactileHRC/"))
@@ -42,7 +42,15 @@ database_stat = 1
 shimmer_stat = 1
 task_started = False
 next_action = False
+id_check = 0
 
+
+def perform_id_check(users):
+    i = [idx for idx, user in enumerate(users) if id_check == user.id]
+    name = 'unknown'
+    users[i].name = name
+    users[i].perception.name = name
+    users[i].task_reasoning.name = name
 
 def setup_user(users, frame_id, task, name=None):
     id = len(users)+1
@@ -67,20 +75,21 @@ def imu_data_callback(data, users):
     i = [idx for idx, user in enumerate(users) if data.UserId == user.id]
     if i:
         i = i[0]
-        if users[i].name != data.UserName:
-            print(f"ERROR: users list name {users[i].name} does not match threeIMUs msg name {data.UserName}")
-        else:
-            positions = ['Hand', 'Wrist', 'Arm']
-            type = ['linear', 'angular']
-            axes = ['x', 'y', 'z']
-            msg_time = datetime.utcfromtimestamp(data.Header.stamp.secs)
-            data_list = []
-            for p in positions:
-                for t in type:
-                    for a in axes:
-                        data_list.append(getattr(getattr(getattr(data, p), t), a))
-            assert len(data_list) == 18, "IMU data received is wrong length"
-            users[i].perception.add_imu_data(data_list, msg_time)
+        # if users[i].name != data.UserName:
+        #     print(f"ERROR: users list name {users[i].name} does not match threeIMUs msg name {data.UserName}")
+        # else:
+        positions = ['Hand', 'Wrist', 'Arm']
+        type = ['linear', 'angular']
+        axes = ['x', 'y', 'z']
+        msg_time = datetime.utcfromtimestamp(data.Header.stamp.secs)
+        data_list = []
+        for p in positions:
+            for t in type:
+                for a in axes:
+                    data_list.append(getattr(getattr(getattr(data, p), t), a))
+        assert len(data_list) == 18, "IMU data received is wrong length"
+        users[i].perception.add_imu_data(data_list, msg_time)
+
 
 def current_action_callback(data, users):
     i = [idx for idx, user in enumerate(users) if data.UserId == user.id]
@@ -91,23 +100,28 @@ def current_action_callback(data, users):
         else:
             msg_time = datetime.utcfromtimestamp(data.Header.stamp.secs)#to_sec())
 
-            # Only select relevant classifier output
-            try:
-                action_idx = users[i].ACTION_CATEGORIES.index(users[i].curr_action_type)-1
-                null_probs = 1-data.ActionProbs[action_idx]
+            # check if actions or gestures output
+            if data.frame_id[-8:] == '_actions':
+                # Only select relevant classifier output
+                try:
+                    action_idx = users[i].ACTION_CATEGORIES.index(users[i].curr_action_type)-1
+                    null_probs = 1-data.ActionProbs[action_idx]
 
-                if data.ActionProbs[action_idx] > null_probs:
-                    users[i].task_reasoning.imu_state_hist = np.vstack((users[i].task_reasoning.imu_state_hist, [float(users[i].ACTION_CATEGORIES.index(users[i].curr_action_type)), 0, msg_time, msg_time]))
-                else:
+                    if data.ActionProbs[action_idx] > null_probs:
+                        users[i].task_reasoning.imu_state_hist = np.vstack((users[i].task_reasoning.imu_state_hist, [float(users[i].ACTION_CATEGORIES.index(users[i].curr_action_type)), 0, msg_time, msg_time]))
+                    else:
+                        users[i].task_reasoning.imu_state_hist = np.vstack((users[i].task_reasoning.imu_state_hist, [float(users[i].ACTION_CATEGORIES.index('null')), 0, msg_time, msg_time]))
+
+                except ValueError as e:
+                    # When action is robot action so not found in user action list
                     users[i].task_reasoning.imu_state_hist = np.vstack((users[i].task_reasoning.imu_state_hist, [float(users[i].ACTION_CATEGORIES.index('null')), 0, msg_time, msg_time]))
-
-            except ValueError as e:
-                # When action is robot action so not found in user action list
-                users[i].task_reasoning.imu_state_hist = np.vstack((users[i].task_reasoning.imu_state_hist, [float(users[i].ACTION_CATEGORIES.index('null')), 0, msg_time, msg_time]))
-                null_probs = 1
+                    null_probs = 1
+                
+                users[i].task_reasoning.imu_pred_hist = np.vstack((users[i].task_reasoning.imu_pred_hist, (np.hstack((null_probs, data.ActionProbs, msg_time)))))
+                users[i].task_reasoning.collate_har_seq(task_started)
             
-            users[i].task_reasoning.imu_pred_hist = np.vstack((users[i].task_reasoning.imu_pred_hist, (np.hstack((null_probs, data.ActionProbs, msg_time)))))
-            users[i].task_reasoning.collate_har_seq(task_started)
+            elif data.frame_id[-8:] == '_gesture':
+                users[i].task_reasoning.gesture_handler(np.argmax(data.ActionProbs), msg_time, task_started)
 
 
 def sys_stat_callback(data, users):
@@ -133,11 +147,13 @@ def sys_stat_callback(data, users):
 
 def sys_cmd_callback(msg):
     """callback for system command messages"""
-    global task_started, next_action
+    global task_started, next_action, id_check
     if msg.data == 'start':
         task_started = True
     elif msg.data == 'next_action':
         next_action = True
+    elif msg.data[0:19] == 'user_identification':
+        id_check = msg.data[-1]
 
 
 def update_user_data_seq(user):
@@ -148,11 +164,13 @@ def update_user_data_seq(user):
 
 
 def users_node():
-    global database_stat, shimmer_stat, next_action
+    global database_stat, shimmer_stat, next_action, id_check
     frame_id = "users_node"
     rospy.init_node(frame_id, anonymous=True)
     keyvalues = []
     users = []
+    user_threads = []
+    num_users = 1
     diag_obj = diag_class(frame_id=frame_id, user_id=0, user_name="N/A", queue=1, keyvalues=keyvalues)
 
     rospy.Subscriber("SystemStatus", diagnostics, sys_stat_callback, (users))
@@ -164,8 +182,8 @@ def users_node():
         diag_obj.publish(1, "Waiting for postgresql node")
         time.sleep(0.5)
 
-    user_threads = []
-    for name in args.user_names:
+    for n in range(num_users): # args.user_names:
+        name = "unknown"
         # Create user object
         users = setup_user(users, frame_id, args.task_type, name)
         # Thread to update sensor data windows
@@ -193,6 +211,10 @@ def users_node():
                 user.task_reasoning.next_action_override()
             next_action = False
 
+        if (id_check != 0) and (not task_started):
+            perform_id_check(users)
+            id_check = 0
+        
         diag_obj.publish(0, "Running")
         rate.sleep()
 

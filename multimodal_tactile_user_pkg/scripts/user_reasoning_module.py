@@ -5,8 +5,10 @@ import pandas as pd
 import matplotlib.pyplot as plt
 from postgresql.database_funcs import database
 from datetime import datetime, date, timedelta
-from global_data import ACTIONS
+from global_data import ACTIONS, GESTURES
 import pytz
+import rospy
+from std_msgs import String
 
 plt.ion()
 
@@ -29,15 +31,17 @@ class reasoning_module:
         self.output_override = []
         self.fut_act_pred_col_names = None
 
-        self.imu_pred = np.zeros(6) #class confs, t
-        self.imu_pred_hist = np.empty(6) #class confs, t
-        self.imu_state_hist = np.array([0, 1, datetime.min, datetime.min]) #class, conf, tStart, tEnd
-        self.final_state_hist = np.array([0, 1, datetime.min, datetime.min], ndmin=2) #class, conf, tStart, tEnd
+        self.imu_pred = np.zeros(6) # class confs, t
+        self.imu_pred_hist = np.empty(6) # class confs, t
+        self.imu_state_hist = np.array([0, 1, datetime.min, datetime.min]) # class, conf, tStart, tEnd
+        self.final_state_hist = np.array([0, 1, datetime.min, datetime.min], ndmin=2) # class, conf, tStart, tEnd
 
         self.curr_action_no = 0
         self.curr_action_type = None
         self.curr_action_start_t = datetime.utcnow()
 
+        self.current_gesture = np.array([0, datetime.min, datetime.min]) # class, tStart, tEnd
+        self.cmd_publisher= rospy.Publisher('ProcessCommands', String, queue_size=10)
         self.db = database()
 
     def predict_action_statuses(self):
@@ -147,14 +151,16 @@ class reasoning_module:
         self.curr_action_type = self.task_data.iloc[next_action_row_i]["action_name"]
         print(self.output_override)
 
-    def collate_episode(self):
+    def collate_episode(self, ):
         self.final_state_hist = np.vstack((self.final_state_hist, self.imu_state_hist[-3, :]))
        
         start_t = self.final_state_hist[-1, 2]
         end_t = self.final_state_hist[-1, 3]
-        dur = end_t - start_t
         action_name = self.ACTION_CATEGORIES[int(self.final_state_hist[-1, 0])]
-
+        self.pub_episode(start_t, end_t, action_name)
+    
+    def pub_episode(self, start_t, end_t, action_name):
+        dur = end_t - start_t
          # Can publish new episode to sql
         self.db.insert_data_list("Episodes", 
         ["date", "start_t", "end_t", "duration", "user_id", "hand", "task_name", "action_name", "action_no"], 
@@ -240,3 +246,32 @@ class reasoning_module:
                 user_state = self.update_progress()
                 if user_state == "continuing":
                     self.predict_action_statuses()
+
+    def gesture_handler(self, ges_idx, msg_time, task_started):
+        if ges_idx == self.current_gesture[0]:
+            self.current_gesture[2] = msg_time
+        else:
+            # Publish old gesture to episodic
+            gesture = GESTURES[self.current_gesture[0]]
+            if (gesture != "Null") and (gesture != "null"):
+                start_t = self.current_gesture[1]
+                end_t = self.current_gesture[2]
+                self.pub_episode(start_t, end_t, gesture)
+
+            # Start tracking new gesture
+            self.current_gesture[0] = ges_idx
+            self.current_gesture[1] = msg_time
+            self.current_gesture[2] = msg_time
+            gesture = GESTURES[self.current_gesture[0]]
+            if (gesture != "Null") and (gesture != "null"):
+                print(f"Gesture {gesture} detected")
+                if task_started:
+                    if gesture == "Left":
+                        self.cmd_publisher.publish('next_action')
+                    elif gesture == "Stop":
+                        pass
+                else:
+                    if (gesture == "Wave") and (self.name == "unknown"):
+                        self.cmd_publisher.publish(f'user_identification_{self.id}')
+                    elif (gesture == "Forward") and (self.name != "unknown"):
+                        self.cmd_publisher.publish('start')
