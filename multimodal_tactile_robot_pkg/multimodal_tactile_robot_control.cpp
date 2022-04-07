@@ -100,7 +100,7 @@ void bring_part_to_user(string bring_cmd, std::map<std::string, double> &targetJ
         // Move to user delivery position
         Robot.move_robot(targetJoints, bring_cmd, string("deliver_2_user"));
         // Move down, set down part, move up
-        set_down_object(Robot, 0.03, 0.5);
+        set_down_object(Robot, 0.03, 0.5); //>>>>>> Add tactile gripper open stuff instead of this line
     }
     else if( bring_cmd=="bring_hand_screw_parts" || bring_cmd=="bring_legs" )
     {          
@@ -108,7 +108,7 @@ void bring_part_to_user(string bring_cmd, std::map<std::string, double> &targetJ
         // Move to user delivery position
         Robot.move_robot(targetJoints, bring_cmd, string("deliver_2_user"));
         // Move down, set down part, move up
-        set_down_object(Robot, 0.03, 0.5);
+        set_down_object(Robot, 0.03, 0.5); //>>>>>> Add tactile gripper open stuff instead of this line
     }
     else if( bring_cmd=="bring_seat_top" || bring_cmd=="bring_back_frame" )
     {
@@ -116,7 +116,7 @@ void bring_part_to_user(string bring_cmd, std::map<std::string, double> &targetJ
         // Move to user delivery position
         Robot.move_robot(targetJoints, bring_cmd, string("deliver_big_2_user"));
         // Move down, set down part, move up
-        set_down_object(Robot, 0.04, 0.5);
+        set_down_object(Robot, 0.04, 0.5); //>>>>>> Add tactile gripper open stuff instead of this line
     }
     else
     {
@@ -136,7 +136,7 @@ void take_assembly(string take_cmd, std::map<std::string, double> &targetJoints,
     if( take_cmd == "take_box" )
     {
         // Move down, pick assembly up, move up
-        pick_up_object(Robot, 0.07);
+        pick_up_object(Robot, 0.07); //>>>>>> Add tactile gripper close stuff instead of this line
         // Move to position
         string deliver_cmd = "deliver_box";
         Robot.move_robot(targetJoints, deliver_cmd, deliver_cmd);
@@ -146,7 +146,7 @@ void take_assembly(string take_cmd, std::map<std::string, double> &targetJoints,
     else if ( take_cmd == "take_chair" )
     {
         // Move down, pick assembly up, move up
-        pick_up_object(Robot, 0.07);
+        pick_up_object(Robot, 0.07); //>>>>>> Add tactile gripper close stuff instead of this line
         // Move to position
         string deliver_cmd = "deliver_chair";
         Robot.move_robot(targetJoints, deliver_cmd, deliver_cmd);
@@ -188,10 +188,11 @@ geometry_msgs::Pose look_for_objects(string bring_cmd)
     //return object_pose;
 }
 
-void stack_blocks(string bring_cmd, std::map<std::string, double> &targetJoints, moveit_robot &Robot, int stack_height)
+int move_blocks(string bring_cmd, std::map<std::string, double> &targetJoints, moveit_robot &Robot, int stack_pos)
 {
     // Move to position above block
-    Robot.move_robot(targetJoints, bring_cmd, bring_cmd);
+    string jnt_pos_name = "stack_pos_" + to_string(stack_pos);
+    Robot.move_robot(targetJoints, bring_cmd, jnt_pos_name);
 
     bool success = false;
     if ( vision_recog ){
@@ -221,24 +222,27 @@ void stack_blocks(string bring_cmd, std::map<std::string, double> &targetJoints,
         //Robot.move_group.move();
 
         // Move down, pick block up, move up
-        pick_up_object(Robot, 0.11);
+        pick_up_object(Robot, 0.05);
 
-        // Move to stack position
-        Robot.move_robot(targetJoints, bring_cmd, string("final_stack"));
+        if (stack_pos == 1){
+            stack_pos = 2;
+        }
+        else {
+            stack_pos = 1;
+        }
+        // Move to new position
+        jnt_pos_name = "stack_pos_" + to_string(stack_pos);
+        Robot.move_robot(targetJoints, bring_cmd, jnt_pos_name);
 
         // Move down, set down block, move up
-        double block_heght = 0.019;
-        double z_move = 0.11 - (stack_height*block_heght);
-        Robot.z_move(-(z_move-block_heght), 0.05);
-        Robot.z_move(-block_heght, 0.01);
-        Robot.open_gripper();
-        Robot.z_move(z_move, 1.0);
+        set_down_object(Robot, 0.05, 0.05);
     }
     else {
         cout << "Failed to perform IK plan" << endl;
     }
   // Return to home position
     //home(targetJoints, Robot);
+    return stack_pos;
 }
 
 void remove_blocks(std::map<std::string, double> &targetJoints, moveit_robot &Robot, int stack_height)
@@ -269,7 +273,7 @@ void remove_blocks(std::map<std::string, double> &targetJoints, moveit_robot &Ro
 int main(int argc, char** argv)
 {
     // Set up ROS stuff
-    string frame_id = "hri_static_demo";
+    string frame_id = "multimodal_tactile_robot_control";
     ros::init(argc, argv, frame_id);
     ros::NodeHandle node_handle;
     ros::AsyncSpinner spinner(1);
@@ -314,7 +318,8 @@ int main(int argc, char** argv)
     Robot.robot_status_pub.publish(Robot.robot_status_msg);
     cout << ">>>>-- Waiting for command --<<<<" << endl;
 
-    int stack_height = 0;
+    int stack_pos = 1;
+
     while( ros::ok() )
     {
             targetJoints.clear();
@@ -338,15 +343,9 @@ int main(int argc, char** argv)
                     {  
                         take_assembly(objectString, targetJoints, Robot);
                     }
-                    else if( objectString.rfind("stack_", 0) == 0 )
+                    else if( objectString.rfind("move_stack", 0) == 0 )
                     { 
-                        stack_blocks(objectString, targetJoints, Robot, stack_height);
-                        stack_height++;
-                    }
-                    else if( objectString == "remove_stack" )
-                    {  
-                        remove_blocks(targetJoints, Robot, stack_height);
-                        stack_height = 0;
+                        stack_pos = move_blocks(objectString, targetJoints, Robot, stack_pos);
                     }
                     else if( objectString == "home" )
                     {

@@ -271,7 +271,7 @@ link_directories(${catkin_LIBRARY_DIRS})
 #add_subdirectory(scripts)
 add_subdirectory(robotiq_gripper_control)
 
-add_executable(${PROJECT_NAME} multimodal_tactile_robot_control.cpp include/moveit_robot.cpp)
-target_link_libraries(${PROJECT_NAME} ${catkin_LIBRARIES} ${Boost_LIBRARIES})
-add_dependencies(${PROJECT_NAME} ${catkin_EXPORTED_TARGETS})
-install(TARGETS ${PROJECT_NAME} DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION})
+add_executable(multimodal_tactile_robot_control multimodal_tactile_robot_control.cpp include/moveit_robot.cpp)
+target_link_libraries(multimodal_tactile_robot_control ${catkin_LIBRARIES} ${Boost_LIBRARIES})
+add_dependencies(multimodal_tactile_robot_control ${catkin_EXPORTED_TARGETS})
+

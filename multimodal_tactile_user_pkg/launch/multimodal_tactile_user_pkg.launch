@@ -25,49 +25,49 @@
   <arg unless="$(arg test_mode)" name="fake_sensors_node" default="false" />
 
   <group if="$(arg gui)">
-    <node name="gui_node" pkg="sam_nodes" type="gui.py" respawn="false" output="screen" required="true" args="--task_type $(arg task) --classifier_type $(arg classifier)">
+    <node name="gui_node" pkg="multimodal_tactile_user_pkg" type="gui.py" respawn="false" output="screen" required="true" args="--task_type $(arg task) --classifier_type $(arg classifier)">
     </node>
   </group>
 
   <group if="$(arg im_recog)">
-    <!-- <node name="im_recog_realsense" pkg="sam_nodes" type="im_recog_realsense.py" respawn="false" output="screen"> -->
-    <node name="screw_detector_realsense" pkg="sam_nodes" type="screw_detector_realsense.py" respawn="false" output="screen">
+    <!-- <node name="im_recog_realsense" pkg="multimodal_tactile_user_pkg" type="im_recog_realsense.py" respawn="false" output="screen"> -->
+    <node name="screw_detector_realsense" pkg="multimodal_tactile_user_pkg" type="screw_detector_realsense.py" respawn="false" output="screen">
     </node>
   </group>
 
   <group if="$(arg postgresql)">
-    <node name="postgresql_node" pkg="sam_nodes" type="postgresql_node.py" respawn="false" output="screen">
+    <node name="postgresql_node" pkg="multimodal_tactile_user_pkg" type="postgresql_node.py" respawn="false" output="screen">
     </node>
   </group>
 
   <group if="$(arg robot_controller)">
-    <node name="robot_controller" pkg="sam_nodes" type="robot_controller.py" respawn="false" output="screen">
+    <node name="robot_controller" pkg="multimodal_tactile_user_pkg" type="robot_controller.py" respawn="false" output="screen">
     </node>
   </group>
 
   <group if="$(arg robot_controller_test)">
-    <node name="robot_controller_test" pkg="sam_nodes" type="robot_controller_test.py" respawn="false" output="screen">
+    <node name="robot_controller_test" pkg="multimodal_tactile_user_pkg" type="robot_controller_test.py" respawn="false" output="screen">
     </node>
   </group>
   
   <group if="$(arg shimmerBase)">
-    <node name="shimmerBase" pkg="sam_nodes" type="shimmerBase.py" respawn="false" output="screen" args="--task_type $(arg task) --classifier_type $(arg classifier)">
+    <node name="shimmerBase" pkg="multimodal_tactile_user_pkg" type="shimmerBase.py" respawn="false" output="screen" args="--task_type $(arg task) --classifier_type $(arg classifier)">
     </node>
   </group>
   
   <group if="$(arg users_node)">
-    <node name="users_node" pkg="sam_nodes" type="users_node.py" respawn="false" output="screen" args="--task_type $(arg task) --classifier_type $(arg classifier)">
+    <node name="users_node" pkg="multimodal_tactile_user_pkg" type="users_node.py" respawn="false" output="screen" args="--task_type $(arg task) --classifier_type $(arg classifier)">
     </node>
   </group>
 
   <arg name="node_start_delay_2" default="5.0" />  
   <group if="$(arg fake_imu_node)">
-    <node name="fake_imu_node" pkg="sam_nodes" type="fake_imu_publisher.py" respawn="false" output="screen" launch-prefix="bash -c 'sleep $(arg node_start_delay_2); $0 $@' ">
+    <node name="fake_imu_node" pkg="multimodal_tactile_user_pkg" type="fake_imu_publisher.py" respawn="false" output="screen" launch-prefix="bash -c 'sleep $(arg node_start_delay_2); $0 $@' ">
     </node>
   </group>
 
   <group if="$(arg fake_sensors_node)">
-    <node name="fake_sensors_node" pkg="sam_nodes" type="fake_sensor_data_publisher.py" respawn="false" output="screen" launch-prefix="bash -c 'sleep $(arg node_start_delay_2); $0 $@' ">
+    <node name="fake_sensors_node" pkg="multimodal_tactile_user_pkg" type="fake_sensor_data_publisher.py" respawn="false" output="screen" launch-prefix="bash -c 'sleep $(arg node_start_delay_2); $0 $@' ">
     </node>
   </group>
 
