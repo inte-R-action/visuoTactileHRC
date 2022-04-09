@@ -8,7 +8,7 @@ from datetime import datetime, date, timedelta
 from global_data import ACTIONS, GESTURES
 import pytz
 import rospy
-from std_msgs import String
+from std_msgs.msg import String
 
 plt.ion()
 
@@ -39,10 +39,20 @@ class reasoning_module:
         self.curr_action_no = 0
         self.curr_action_type = None
         self.curr_action_start_t = datetime.utcnow()
+        self.task_started = False
 
         self.current_gesture = np.array([0, datetime.min, datetime.min]) # class, tStart, tEnd
-        self.cmd_publisher= rospy.Publisher('ProcessCommands', String, queue_size=10)
+        self.cmd_publisher = rospy.Publisher('ProcessCommands', String, queue_size=10)
+        self.usr_fdbck_pub = rospy.Publisher('UserFeedback', String, queue_size=10)
         self.db = database()
+
+    def update_user_details(self, name=None, Id=None, frame_id=None):
+        if name:
+            self.name = name
+        if Id:
+            self.id = Id
+        if frame_id:
+            self.frame_id = frame_id
 
     def predict_action_statuses(self):
         time = 0
@@ -149,9 +159,11 @@ class reasoning_module:
         next_action_row_i = self.task_data[self.task_data.done == False].index[0]
         self.curr_action_no = self.task_data.iloc[next_action_row_i]["action_no"]
         self.curr_action_type = self.task_data.iloc[next_action_row_i]["action_name"]
+        if self.task_started:
+            self.usr_fdbck_pub.publish(f"Waiting for {self.curr_action_type} action")
         print(self.output_override)
 
-    def collate_episode(self, ):
+    def collate_episode(self):
         self.final_state_hist = np.vstack((self.final_state_hist, self.imu_state_hist[-3, :]))
        
         start_t = self.final_state_hist[-1, 2]
@@ -192,9 +204,12 @@ class reasoning_module:
 
                 self.curr_action_no = self.task_data.iloc[next_action_row_i]["action_no"]
                 self.curr_action_type = self.task_data.iloc[next_action_row_i]["action_name"]
+                if self.task_started:
+                    self.usr_fdbck_pub.publish(f"Waiting for {self.curr_action_type} action")
 
         except IndexError:
             print(f"Looks like user {self.name} tasks are finished")
+            self.usr_fdbck_pub.publish(f"Looks like user {self.name} tasks are finished")
             return "finished"
 
     def update_progress(self):
@@ -205,6 +220,7 @@ class reasoning_module:
             next_action_row_i = self.task_data[self.task_data.done == False].index[0]
         except IndexError:
             print(f"Looks like user {self.name} tasks are finished")
+            self.usr_fdbck_pub.publish(f"Looks like user {self.name} tasks are finished")
             return "finished"
 
         # Check next action for user matches action completed
@@ -220,13 +236,15 @@ class reasoning_module:
 
         self.curr_action_no = self.task_data.iloc[next_action_row_i]["action_no"]
         self.curr_action_type = self.task_data.iloc[next_action_row_i]["action_name"]
+        if self.task_started:
+            self.usr_fdbck_pub.publish(f"Waiting for {self.curr_action_type} action")
 
         return "continuing"
         
-    def collate_har_seq(self, task_started):
+    def collate_har_seq(self):
         # 'Dilation' filter to remove single erroneous predictions
-        #print('state hist: ', self._imu_state_hist)
-        #print('pred hist: ', self._imu_pred_hist)
+        #print('state hist: ', self.imu_state_hist)
+        #print('pred hist: ', self.imu_pred_hist)
         if np.shape(self.imu_state_hist)[0] >= 4:
             self.update_robot_progress()
 
@@ -234,20 +252,20 @@ class reasoning_module:
                 self.imu_state_hist[-2, 0] = self.imu_state_hist[-1, 0]
 
             # Group predictions of same type together
-            if self._imu_state_hist[-2, 0] == self.imu_state_hist[-3, 0]:
-                i = np.where(self._imu_pred_hist[:, -1] == self.imu_state_hist[-3, 2])[0][0] #Get index where action starts
+            if self.imu_state_hist[-2, 0] == self.imu_state_hist[-3, 0]:
+                i = np.where(self.imu_pred_hist[:, -1] == self.imu_state_hist[-3, 2])[0][0] #Get index where action starts
                 self.imu_state_hist[-2, 1] = np.mean(self.imu_pred_hist[i:-1, int(self.imu_state_hist[-2, 0])].astype(float)) #Not convinced about this mean
                 self.imu_state_hist[-2, 2] = self.imu_state_hist[-3, 2] # set start time
                 self.imu_state_hist = np.delete(self.imu_state_hist, -3, 0)
             else:
                 # New action predicted
-                if task_started:
-                    self.collate_episode(task_started)
+                if self.task_started:
+                    self.collate_episode()
                 user_state = self.update_progress()
                 if user_state == "continuing":
                     self.predict_action_statuses()
 
-    def gesture_handler(self, ges_idx, msg_time, task_started):
+    def gesture_handler(self, ges_idx, msg_time):
         if ges_idx == self.current_gesture[0]:
             self.current_gesture[2] = msg_time
         else:
@@ -265,11 +283,12 @@ class reasoning_module:
             gesture = GESTURES[self.current_gesture[0]]
             if (gesture != "Null") and (gesture != "null"):
                 print(f"Gesture {gesture} detected")
-                if task_started:
+                if self.task_started:
                     if gesture == "Left":
                         self.cmd_publisher.publish('next_action')
+                        self.usr_fdbck_pub.publish(f"Sorry I'm behind, next action coming!")
                     elif gesture == "Stop":
-                        pass
+                        self.usr_fdbck_pub.publish(f"STOP received")
                 else:
                     if (gesture == "Wave") and (self.name == "unknown"):
                         self.cmd_publisher.publish(f'user_identification_{self.id}')

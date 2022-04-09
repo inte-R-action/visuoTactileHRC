@@ -34,7 +34,7 @@ parser.add_argument('--task_type', '-T',
 parser.add_argument('--test',
                     help='Test mode without sensors',
                     choices=[True, False],
-                    default=False)
+                    default=True)
 
 args = parser.parse_known_args()[0]
 print(f"Users node settings: {args.task_type}")
@@ -45,12 +45,23 @@ next_action = False
 id_check = 0
 
 
-def perform_id_check(users):
-    i = [idx for idx, user in enumerate(users) if id_check == user.id]
-    name = 'unknown'
-    users[i].name = name
-    users[i].perception.name = name
-    users[i].task_reasoning.name = name
+def perform_id_check(users, usr_fdbck_pub):
+    usr_fdbck_pub.publish("Face camera for ID check")
+    success = True
+    i = [idx for idx, user in enumerate(users) if int(id_check) == user.id][0]
+    name = "j"
+    #success, name = cameraIDcheck()
+    users[i].update_user_details(name=name)
+    
+    if success:
+        usr_fdbck_pub.publish(f"Hello {name}!")
+        time.sleep(1)
+        usr_fdbck_pub.publish("Gesture forwards to start task")
+    else:
+        usr_fdbck_pub.publish("ID check failed :(, I'll try again")
+        time.sleep(1)
+    return success
+
 
 def setup_user(users, frame_id, task, name=None):
     id = len(users)+1
@@ -101,10 +112,10 @@ def current_action_callback(data, users):
             msg_time = datetime.utcfromtimestamp(data.Header.stamp.secs)#to_sec())
 
             # check if actions or gestures output
-            if data.frame_id[-8:] == '_actions':
+            if data.Header.frame_id[-8:] == '_actions':
                 # Only select relevant classifier output
                 try:
-                    action_idx = users[i].ACTION_CATEGORIES.index(users[i].curr_action_type)-1
+                    action_idx = users[i].ACTION_CATEGORIES.index(users[i].task_reasoning.curr_action_type)-1
                     null_probs = 1-data.ActionProbs[action_idx]
 
                     if data.ActionProbs[action_idx] > null_probs:
@@ -118,10 +129,10 @@ def current_action_callback(data, users):
                     null_probs = 1
                 
                 users[i].task_reasoning.imu_pred_hist = np.vstack((users[i].task_reasoning.imu_pred_hist, (np.hstack((null_probs, data.ActionProbs, msg_time)))))
-                users[i].task_reasoning.collate_har_seq(task_started)
+                users[i].task_reasoning.collate_har_seq()
             
-            elif data.frame_id[-8:] == '_gesture':
-                users[i].task_reasoning.gesture_handler(np.argmax(data.ActionProbs), msg_time, task_started)
+            elif data.Header.frame_id[-8:] == '_gesture':
+                users[i].task_reasoning.gesture_handler(np.argmax(data.ActionProbs), msg_time)
 
 
 def sys_stat_callback(data, users):
@@ -148,6 +159,7 @@ def sys_stat_callback(data, users):
 def sys_cmd_callback(msg):
     """callback for system command messages"""
     global task_started, next_action, id_check
+    print(msg.data[0:19])
     if msg.data == 'start':
         task_started = True
     elif msg.data == 'next_action':
@@ -175,14 +187,17 @@ def users_node():
 
     rospy.Subscriber("SystemStatus", diagnostics, sys_stat_callback, (users))
     rospy.Subscriber("ProcessCommands", String, sys_cmd_callback)
+    usr_fdbck_pub = rospy.Publisher('UserFeedback', String, queue_size=10)
 
     # Wait for postgresql node to be ready
     while database_stat != 0 and not rospy.is_shutdown():
         print(f"Waiting for postgresql node status, currently {database_stat}")
         diag_obj.publish(1, "Waiting for postgresql node")
+        usr_fdbck_pub.publish("Waiting for postgresql node")
         time.sleep(0.5)
 
-    for n in range(num_users): # args.user_names:
+    usr_fdbck_pub.publish("Initialising User")
+    for _ in range(num_users): # args.user_names:
         name = "unknown"
         # Create user object
         users = setup_user(users, frame_id, args.task_type, name)
@@ -194,17 +209,21 @@ def users_node():
     while shimmer_stat != 0 and not rospy.is_shutdown():
         print(f"Waiting for shimmer node status, currently {shimmer_stat}")
         diag_obj.publish(1, "Waiting for shimmer node")
+        usr_fdbck_pub.publish("Waiting for shimmer node")
         time.sleep(0.5)
 
     rospy.Subscriber("CurrentAction", current_action, current_action_callback, (users))
     rospy.Subscriber("IMUdata", threeIMUs, imu_data_callback, (users))
 
     rate = rospy.Rate(2)  # 2hz, update predictions every 0.5 s
+    
+    usr_fdbck_pub.publish("Wave to start system")
     while not rospy.is_shutdown():
         # rospy.loginfo(f"{frame_id} active")
         for user in users:
+            user.task_reasoning.task_started = task_started
             user.perception.predict_actions()
-            user.perception.predict_gestures()
+            user.perception.predict_gestures()                
         
         if next_action:
             for user in users:
@@ -212,36 +231,66 @@ def users_node():
             next_action = False
 
         if (id_check != 0) and (not task_started):
-            perform_id_check(users)
-            id_check = 0
+            id_success = perform_id_check(users, usr_fdbck_pub)
+            if id_success:
+                id_check = 0
         
         diag_obj.publish(0, "Running")
         rate.sleep()
 
 
 def users_test_node():
-    global database_stat
+    global database_stat, next_action, id_check
     frame_id = "users_node"
     rospy.init_node(frame_id, anonymous=True)
     keyvalues = []
     users = []
+    user_threads = []
+    num_users = 1
     diag_obj = diag_class(frame_id=frame_id, user_id=0, user_name="N/A", queue=1, keyvalues=keyvalues)
 
     rospy.Subscriber("SystemStatus", diagnostics, sys_stat_callback, (users))
+    rospy.Subscriber("ProcessCommands", String, sys_cmd_callback)
+    usr_fdbck_pub = rospy.Publisher('UserFeedback', String, queue_size=10)
 
     # Wait for postgresql node to be ready
     while database_stat != 0 and not rospy.is_shutdown():
         print(f"Waiting for postgresql node status, currently {database_stat}")
         diag_obj.publish(1, "Waiting for postgresql node")
+        usr_fdbck_pub.publish("Waiting for postgresql node")
         time.sleep(0.5)
 
-    for name in args.user_names:
+    usr_fdbck_pub.publish("Initialising User")
+    for _ in range(num_users): # args.user_names:
+        name = "unknown"
+        # Create user object
         users = setup_user(users, frame_id, args.task_type, name)
+        # Thread to update sensor data windows
+        user_threads.append(threading.Thread(target=update_user_data_seq, args=(users[-1],), daemon=True))
+        user_threads[-1].start()
 
     rospy.Subscriber("CurrentAction", current_action, current_action_callback, (users))
+    rospy.Subscriber("IMUdata", threeIMUs, imu_data_callback, (users))
 
     rate = rospy.Rate(2)  # 2hz, update predictions every 0.5 s
+    usr_fdbck_pub.publish("Wave to start system")
     while not rospy.is_shutdown():
+        # rospy.loginfo(f"{frame_id} active")
+        for user in users:
+            user.task_reasoning.task_started = task_started
+            user.perception.predict_actions()
+            user.perception.predict_gestures()                
+        
+        if next_action:
+            for user in users:
+                user.task_reasoning.next_action_override()
+            next_action = False
+
+        if (id_check != 0) and (not task_started):
+            id_success = perform_id_check(users, usr_fdbck_pub)
+            if id_success:
+                id_check = 0
+        
         diag_obj.publish(0, "Running")
         rate.sleep()
 

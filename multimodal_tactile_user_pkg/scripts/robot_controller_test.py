@@ -10,7 +10,7 @@ from multimodal_tactile_custom_msgs.msg import capability
 from postgresql.database_funcs import database
 import pandas as pd
 import datetime
-os.chdir(os.path.expanduser("~/catkin_ws/src/multimodal_human_robot_collaboration/"))
+os.chdir(os.path.expanduser("~/catkin_ws/src/visuoTactileHRC/"))
 
 def test_robot_control_node():
     # ROS node setup

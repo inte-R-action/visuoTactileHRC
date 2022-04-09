@@ -14,7 +14,7 @@ import pandas as pd
 import time
 from datetime import datetime, date, timedelta
 import pytz
-os.chdir(os.path.expanduser("~/catkin_ws/src/multimodal_human_robot_collaboration/"))
+os.chdir(os.path.expanduser("~/catkin_ws/src/visuoTactileHRC/"))
 
 database_stat = 1
 user_node_stat = 1

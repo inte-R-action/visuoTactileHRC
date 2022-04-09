@@ -1,5 +1,5 @@
 #!/usr/bin/env python3.7
-# Should be run from multimodal_human_robot_collaboration folder
+# Should be run from visuoTactileHRC folder
 
 from fileinput import filename
 import sys, os
@@ -136,7 +136,7 @@ def make_tables(db, del_tab=True):
 def update_meta_data(db):
     try:
         for task in TASKS:
-            folder = './sam_nodes/scripts/models_parameters/'
+            folder = './multimodal_tactile_user_pkg/scripts/models_parameters/'
             file = f"metadata_tasks_{task}.csv"
             specific_name = file.split('metadata_tasks_')[1][0:-4]
             try:
@@ -163,7 +163,7 @@ def update_meta_data(db):
         print(e)
 
 def load_tables(db):
-    base_dir = os.getcwd()+'/sam_nodes/scripts/postgresql/'
+    base_dir = os.getcwd()+'/multimodal_tactile_user_pkg/scripts/postgresql/'
     for name in tables_to_make:
         try:
             db.csv_import(f"{base_dir}{name}.csv", tab_name=name)

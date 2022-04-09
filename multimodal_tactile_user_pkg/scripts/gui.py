@@ -21,13 +21,11 @@ from postgresql.database_funcs import database
 import os
 import pandas as pd
 from tkinter import ttk
-from global_data import ACTIONS, TASKS, DEFAULT_TASK, inclAdjParam
+from global_data import ACTIONS, TASKS, DEFAULT_TASK, GESTURES
 import argparse
 import rosnode
 import threading
 
-# os.chdir(os.path.expanduser(
-#     "~/catkin_ws/src/multimodal_human_robot_collaboration/sam_nodes/scripts"))
 os.chdir(os.path.dirname(__file__))
 
 # Argument parsing
@@ -38,14 +36,9 @@ parser.add_argument('--task_type', '-T',
                     help='Task for users to perform, options: assemble_box (default), assemble_complex_box',
                     choices=TASKS,
                     default=DEFAULT_TASK)
-# parser.add_argument('--inclAdjParam',
-#                     help='include user/task adjustment parameters for lstm model',
-#                     choices=[True, False],
-#                     default=False)
 args = parser.parse_known_args()[0]
 
 print(f"GUI settings: {args.task_type}")
-pos = np.arange(len(ACTIONS))
 
 plt.ion()
 
@@ -57,10 +50,7 @@ def send_shutdown_signal(diag_obj):
     shutdown_window = shutting_down_window()
     nodes = rosnode.get_node_names()
 
-    x = threading.Thread(target=enter_dreaming_phase)
-    x.start()
-
-    while nodes or x.is_alive():
+    while nodes:
         shutdown_window.animate_window()
 
         if not x.is_alive():
@@ -90,7 +80,8 @@ class user_frame:
         self.id = id
         self.name = name
         self.root = root
-        self.imu_pred = np.ones(4)
+        self.act_pred = np.ones(4)
+        self.ges_pred = np.ones(len(GESTURES))
         self.task_name = args.task_type
         self.task_data = None
         self.status = "unknown"
@@ -102,13 +93,17 @@ class user_frame:
         self.cmd_publisher.publish(f'User:{self.name}')
         self.cmd_publisher.publish(f'Task:{self.task_name}')
 
-        self.fig = Figure()
-        self.ax = self.fig.subplots(1, 1)
+        self.act_fig = Figure()
+        self.act_ax = self.act_fig.subplots(1, 1)
+
+        self.ges_fig = Figure()
+        self.ges_ax = self.ges_fig.subplots(1, 1)
 
         self.db = database()
 
         self.create_user_frame()
         self.update_action_plot()
+        self.update_gesture_plot()
 
     def create_user_frame(self):
         self.user_frame = Tk.Frame(master=self.root, bg="red")
@@ -138,18 +133,22 @@ class user_frame:
         self.shimmer_frame.grid_rowconfigure(1, weight=1)
         self.shimmer_frame.grid_rowconfigure(2, weight=1)
 
-        # LSTM network parameters
-        self.lstm_params_txt = Tk.Text(master=self.user_frame, height=5, width=2, font=('', 10))
-        self.lstm_params_txt.tag_configure("right", justify='right')
-        self.lstm_params_txt.grid(row=0, column=2, sticky="nsew")
-        self.update_lstm_params_txt()
-
-        # Graph area for current predictions
+        # Graph area for current action predictions
         # A tk.DrawingArea.
-        self.canvas = FigureCanvasTkAgg(self.fig, master=self.user_frame)
-        self.canvas.draw()
+        self.act_canvas = FigureCanvasTkAgg(self.act_fig, master=self.user_frame)
+        self.act_canvas.draw()
         try:
-            self.canvas.get_tk_widget().grid(row=1, column=0, columnspan=3,
+            self.act_canvas.get_tk_widget().grid(row=1, column=0, columnspan=3,
+                                             sticky="nsew")
+        except AttributeError:
+            pass
+
+        # Graph area for current gesture predictions
+        # A tk.DrawingArea.
+        self.ges_canvas = FigureCanvasTkAgg(self.ges_fig, master=self.user_frame)
+        self.ges_canvas.draw()
+        try:
+            self.ges_canvas.get_tk_widget().grid(row=2, column=0, columnspan=3,
                                              sticky="nsew")
         except AttributeError:
             pass
@@ -158,7 +157,7 @@ class user_frame:
         self.load_task_data()
         self.tasks = ttk.Treeview(self.user_frame, show=[
                                   "headings"], height=len(self.task_data.index), displaycolumns="#all")
-        self.tasks.grid(row=2, column=0, columnspan=3,
+        self.tasks.grid(row=3, column=0, columnspan=3,
                         sticky=Tk.W + Tk.E + Tk.N + Tk.S)
         self.tasks["columns"] = self.col_names
 
@@ -174,19 +173,19 @@ class user_frame:
         self.remove_user_button = Tk.Button(
             master=self.user_frame, text="Remove User", command=self.remove_user, bg="red", padx=50, pady=20, width=1, height=1)
         self.remove_user_button.grid(
-            row=3, column=0, sticky='nsew')
+            row=4, column=0, sticky='nsew')
 
         # Next action button
         self.next_action_button = Tk.Button(
             master=self.user_frame, text="Next Action", command=self.next_action, bg="blue", padx=50, pady=20, width=1, height=1)
         self.next_action_button.grid(
-            row=3, column=1, sticky='nsew')
+            row=4, column=1, sticky='nsew')
 
         # Start Task button
         self.start_task_button = Tk.Button(
             master=self.user_frame, text="Start Task", command=self.start_task, bg="green", padx=50, pady=20, width=1, height=1)
         self.start_task_button.grid(
-            row=3, column=2, sticky='nsew')
+            row=4, column=2, sticky='nsew')
 
         # Adjust spacing of objects
         self.user_frame.grid_columnconfigure(0, weight=1)
@@ -195,8 +194,9 @@ class user_frame:
 
         self.user_frame.grid_rowconfigure(0, weight=0)
         self.user_frame.grid_rowconfigure(1, weight=1)
-        self.user_frame.grid_rowconfigure(2, weight=0)
+        self.user_frame.grid_rowconfigure(2, weight=1)
         self.user_frame.grid_rowconfigure(3, weight=0)
+        self.user_frame.grid_rowconfigure(4, weight=0)
 
     def remove_user(self):
         self.user_frame.quit()     # stops mainloop
@@ -229,29 +229,6 @@ class user_frame:
             self.shimmer[i].insert(Tk.INSERT, self.shimmer_info[i][0])
             self.shimmer[i].tag_add("center", "1.0", "end")
 
-    def update_lstm_params_txt(self):
-        if inclAdjParam:
-            col_names, data = self.db.query_table('users', 'all')
-            users_data = pd.DataFrame(data, columns=col_names)
-            users_data = users_data.loc[users_data['user_name']==self.name]
-            col_names, data = self.db.query_table('tasks', 'all')
-            tasks_data = pd.DataFrame(data, columns=col_names)
-            tasks_data = tasks_data.loc[tasks_data['task_name']==self.task_name]
-
-            user_params = users_data[ACTIONS].values[0].round(1)  # time adjust for user
-            task_params = tasks_data[ACTIONS].values[0].round(1)  # time adjustment for task
-        else:
-            user_params = ["N/A"]*len(ACTIONS)
-            task_params = ["N/A"]*len(ACTIONS)
-
-        text = "LSTM Params       \n" \
-               "User|Task \n"
-        text = text+''.join([f"{action}:  {user_params[a]} |  {task_params[a]} \n" for a, action in enumerate(ACTIONS)])
-
-        self.lstm_params_txt.delete("1.0", Tk.END)
-        self.lstm_params_txt.insert(Tk.INSERT, text)
-        self.lstm_params_txt.tag_add("right", "1.0", "end")
-
     def update_user_deets(self):
         text = f" Name: {self.name} \n" \
                f"       Id: {self.id} \n" \
@@ -272,17 +249,34 @@ class user_frame:
         self.col_names.extend(("started", "done", "t_left"))
 
     def update_action_plot(self):
-        self.ax.cla()
-        _ = self.ax.bar(pos, self.imu_pred, align='center', alpha=0.5)
+        self.act_ax.cla()
+        pos = np.arange(len(ACTIONS))
+        _ = self.act_ax.bar(pos, self.act_pred, align='center', alpha=0.5)
 
         try:
-            self.ax.set_xticks(pos)
-            self.ax.set_xticklabels(ACTIONS)
+            self.act_ax.set_xticks(pos)
+            self.act_ax.set_xticklabels(ACTIONS)
         except Exception as e:
             print(e)
-        self.ax.set_ylabel('Confidence')
-        self.ax.set_ylim([0, 1])
-        self.ax.set_title('Current Action Prediction')
+        self.act_ax.set_ylabel('Confidence')
+        self.act_ax.set_ylim([0, 1])
+        self.act_ax.set_title('Current Action Prediction')
+
+        plt.pause(0.00001)
+
+    def update_gesture_plot(self):
+        self.ges_ax.cla()
+        pos = np.arange(len(GESTURES))
+        _ = self.ges_ax.bar(pos, self.ges_pred, align='center', alpha=0.5)
+
+        try:
+            self.ges_ax.set_xticks(pos)
+            self.ges_ax.set_xticklabels(GESTURES)
+        except Exception as e:
+            print(e)
+        self.ges_ax.set_ylabel('Confidence')
+        self.ges_ax.set_ylim([0, 1])
+        self.ges_ax.set_title('Current Gesture Prediction')
 
         plt.pause(0.00001)
 
@@ -398,8 +392,6 @@ class GUI:
         self.root.wm_title("HRC Interaction System")
         self.root.resizable(True, True)
         self.cmd_publisher = cmd_publisher
-        self.fig = Figure()
-        self.axs = np.reshape(self.fig.subplots(1, 1), (-1, 1))
 
         self.create_system_frame()
 
@@ -457,7 +449,7 @@ class GUI:
         # Tasks List
         self.load_robot_actions_data()
         self.tasks = ttk.Treeview(self.sys_frame, show=[
-                                  "headings"], height=18, displaycolumns="#all")
+                                  "headings"], displaycolumns="#all")
         self.tasks.grid(row=4, column=0, columnspan=2, sticky="nsew")
         self.tasks["columns"] = self.col_names
 
@@ -469,15 +461,11 @@ class GUI:
             self.tasks.insert("", index=index, values=list(
                 row), tags=(row['user_id'],))
 
-        # Timing Predictions Graph
-        # A tk.DrawingArea.
-        self.canvas = FigureCanvasTkAgg(self.fig, master=self.sys_frame)
-        self.canvas.draw()
-        try:
-            self.canvas.get_tk_widget().grid(row=5, column=0, columnspan=2,
-                                            sticky="nsew")
-        except AttributeError:
-            pass
+        # User Feedback Text
+        self.usr_feedback_text = f"Please wait, system starting"
+        self.usr_feedback = Tk.Text(master=self.sys_frame, height=2)#, font=("Courier", 20))
+        self.usr_feedback.grid(row=5, column=0, columnspan=2, sticky="nsew")
+        self.usr_feedback.insert(Tk.INSERT, self.usr_feedback_text)
 
         # New User button
         self.new_user_button = Tk.Button(master=self.sys_frame, text="New User", command=self._new_user, bg="green", padx=50, pady=20)
@@ -511,8 +499,6 @@ class GUI:
         if user is not None:
             user = eval(user)
             self.users.append(user_frame(len(self.users)+1, user[0], user[1], self.root, self.cmd_publisher))
-            self.fig.clf()
-            self.axs = np.reshape(self.fig.subplots(len(self.users)+1, 1, sharex='col'), (-1,1))  # subplot for each user plus robot
 
     def load_robot_actions_data(self):
         self.col_names, actions_list = self.db.query_table('robot_action_timings', 'all')
@@ -526,8 +512,6 @@ class GUI:
             try:
                 if self.users[i].destroy == True:
                     del self.users[i]
-                    self.fig.clf()
-                    self.axs = np.reshape(self.fig.subplots(len(self.users)+1, 1, sharex='col'), (-1,1))  # subplot for each user plus robot
             except IndexError:
                 pass
 
@@ -588,14 +572,12 @@ class GUI:
                 except Exception:
                     pass
 
-            # Update future timings plot
-            self.update_timings_plot(predictions_data)
-
         # Update user screw counts
         for user in self.users:
             user.update_shimmer_text()
             try:
-                user.canvas.draw_idle()
+                user.act_canvas.draw_idle()
+                user.ges_canvas.draw_idle()
             except:
                 pass
             # user.user_frame.update_idletasks()
@@ -609,15 +591,15 @@ class GUI:
         self.robot_move.delete("1.0", Tk.END)
         self.robot_move.insert(Tk.INSERT, self.robot_move_text)
 
+        # Update user feedback text
+        self.usr_feedback.delete("1.0", Tk.END)
+        self.usr_feedback.insert(Tk.INSERT, self.usr_feedback_text)
+
         # Configure layout and update plots
         self.root.grid_columnconfigure(0, weight=1)
         for i in range(len(self.users)):
             self.root.grid_columnconfigure(i+1, weight=1)
         self.root.grid_rowconfigure(0, weight=1)
-        try:
-            self.canvas.draw_idle()
-        except:
-            pass
 
         # Update gui
         #self.root.update_idletasks()
@@ -627,10 +609,15 @@ class GUI:
         for user in self.users:
             if data.UserId == user.id:
                 if user.name != data.UserName:
-                    print(f"ERROR: users list name {self.users[data.UserId].name} does not match current_action msg name {data.UserName}")
+                    print(f"ERROR: users list name does not match current_action msg name {data.UserName}")
+                    user.name = data.UserName
                 else:
-                    user.imu_pred = data.ActionProbs
-                    user.update_action_plot()
+                    if data.Header.frame_id[-8:] == '_actions':
+                        user.act_pred = data.ActionProbs
+                        user.update_action_plot()
+                    elif data.Header.frame_id[-8:] == '_gesture':
+                        user.ges_pred = data.ActionProbs
+                        user.update_gesture_plot()
 
     def update_sys_stat(self, data):
         try:
@@ -654,38 +641,9 @@ class GUI:
 
     def update_robot_move(self, data):
         self.robot_move_text = f"Robot Move Cmd: {data.data}"
-
-    def update_timings_plot(self, predictions_data):
-        active_users = self.users
-        [ax[0].cla() for ax in self.axs]
-
-        for u in range(self.axs.shape[0]-1):
-            time_predictions = predictions_data.loc[predictions_data["user_id"]==active_users[u].id]["time_left"]
-            for t in time_predictions:
-                self.axs[u, 0].axvline(x=t)
-            try:
-                self.axs[u, 0].get_yaxis().set_ticks([])
-            except Exception:
-                pass
-            self.axs[u, 0].set_ylabel(f"User: {u}")
-
-        # Plot robot solo action times
-        try:
-            time_predictions = self.robot_tasks_data.loc[self.robot_tasks_data["user_name"]=="robot"]["robot_start_t"].values[0]
-            self.axs[-1, 0].axvline(x=time_predictions)
-        except (KeyError, IndexError) as e:
-            # print("robot solo action time error")
-            pass
-        try:
-            self.axs[-1, 0].get_yaxis().set_ticks([])
-        except Exception:
-            pass
-        self.axs[-1, 0].set_ylabel("Robot Solo")
-
-        self.fig.text(0.5, 0.02, 'Time into future, s', ha='center')
-        self.fig.suptitle('Future Timing Predictions')
-
-        plt.pause(0.00001)
+    
+    def update_usr_feedback(self, data):
+        self.usr_feedback_text = data.data
 
 
 def run_gui():
@@ -702,6 +660,7 @@ def run_gui():
     rospy.Subscriber('SystemStatus', diagnostics, gui.update_sys_stat)
     rospy.Subscriber('RobotStatus', String, gui.update_robot_stat)
     rospy.Subscriber('RobotMove', String, gui.update_robot_move)
+    rospy.Subscriber('UserFeedback', String, gui.update_usr_feedback)
 
     while not rospy.is_shutdown():
         if QUIT:
