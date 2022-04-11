@@ -1,0 +1,3 @@
+episode_id,date,start_t,end_t,duration,user_id,hand,task_name,action_name,action_no
+1,2022-04-11,18:09:33,18:09:40,00:00:07,1,R,assemble_complex_box,Stop,0
+3,2022-04-11,18:09:41,18:09:41,00:00:00,1,R,assemble_complex_box,Wave,0

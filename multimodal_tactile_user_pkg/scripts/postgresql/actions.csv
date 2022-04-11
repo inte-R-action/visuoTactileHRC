@@ -27,3 +27,10 @@ action_id,action_name,std_dur_s,user_type
 25,bring_legs,15,robot
 26,take_chair,1,robot
 27,deliver_chair,0,robot
+28,Wave,0,human
+29,Forward,0,human
+30,Backward,0,human
+31,Left,0,human
+32,Right,0,human
+33,Stop,0,human
+34,Null,0,human

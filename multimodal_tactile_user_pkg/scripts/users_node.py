@@ -13,7 +13,7 @@ from datetime import datetime
 import pandas as pd
 from postgresql.database_funcs import database
 import os
-from global_data import ACTIONS, TASKS, DEFAULT_TASK, GESTURES
+from global_data import ACTIONS, TASKS, DEFAULT_TASK, GESTURES, USER_PARAMETERS
 import threading
 
 os.chdir(os.path.expanduser("~/catkin_ws/src/visuoTactileHRC/"))
@@ -34,7 +34,7 @@ parser.add_argument('--task_type', '-T',
 parser.add_argument('--test',
                     help='Test mode without sensors',
                     choices=[True, False],
-                    default=True)
+                    default=False)
 
 args = parser.parse_known_args()[0]
 print(f"Users node settings: {args.task_type}")
@@ -45,13 +45,16 @@ next_action = False
 id_check = 0
 
 
-def perform_id_check(users, usr_fdbck_pub):
+def perform_id_check(users, usr_fdbck_pub, frame_id):
     usr_fdbck_pub.publish("Face camera for ID check")
     success = True
     i = [idx for idx, user in enumerate(users) if int(id_check) == user.id][0]
-    name = "j"
+    name = "James"
     #success, name = cameraIDcheck()
-    users[i].update_user_details(name=name)
+    try:
+        users[i].update_user_details(name=name, task=USER_PARAMETERS[name], frame_id=frame_id)
+    except Exception as e:
+        success = False
     
     if success:
         usr_fdbck_pub.publish(f"Hello {name}!")
@@ -106,33 +109,33 @@ def current_action_callback(data, users):
     i = [idx for idx, user in enumerate(users) if data.UserId == user.id]
     if i:
         i = i[0]
-        if users[i].name != data.UserName:
-            print(f"ERROR: users list name {users[i].name} does not match current_action msg name {data.UserName}")
-        else:
-            msg_time = datetime.utcfromtimestamp(data.Header.stamp.secs)#to_sec())
+        # if users[i].name != data.UserName:
+        #     print(f"ERROR: users list name {users[i].name} does not match current_action msg name {data.UserName}")
+        # else:
+        msg_time = datetime.utcfromtimestamp(data.Header.stamp.secs)#to_sec())
 
-            # check if actions or gestures output
-            if data.Header.frame_id[-8:] == '_actions':
-                # Only select relevant classifier output
-                try:
-                    action_idx = users[i].ACTION_CATEGORIES.index(users[i].task_reasoning.curr_action_type)-1
-                    null_probs = 1-data.ActionProbs[action_idx]
+        # check if actions or gestures output
+        if data.Header.frame_id[-8:] == '_actions':
+            # Only select relevant classifier output
+            try:
+                action_idx = users[i].ACTION_CATEGORIES.index(users[i].task_reasoning.curr_action_type)-1
+                null_probs = 1-data.ActionProbs[action_idx]
 
-                    if data.ActionProbs[action_idx] > null_probs:
-                        users[i].task_reasoning.imu_state_hist = np.vstack((users[i].task_reasoning.imu_state_hist, [float(users[i].ACTION_CATEGORIES.index(users[i].curr_action_type)), 0, msg_time, msg_time]))
-                    else:
-                        users[i].task_reasoning.imu_state_hist = np.vstack((users[i].task_reasoning.imu_state_hist, [float(users[i].ACTION_CATEGORIES.index('null')), 0, msg_time, msg_time]))
-
-                except ValueError as e:
-                    # When action is robot action so not found in user action list
+                if data.ActionProbs[action_idx] > null_probs:
+                    users[i].task_reasoning.imu_state_hist = np.vstack((users[i].task_reasoning.imu_state_hist, [float(users[i].ACTION_CATEGORIES.index(users[i].curr_action_type)), 0, msg_time, msg_time]))
+                else:
                     users[i].task_reasoning.imu_state_hist = np.vstack((users[i].task_reasoning.imu_state_hist, [float(users[i].ACTION_CATEGORIES.index('null')), 0, msg_time, msg_time]))
-                    null_probs = 1
-                
-                users[i].task_reasoning.imu_pred_hist = np.vstack((users[i].task_reasoning.imu_pred_hist, (np.hstack((null_probs, data.ActionProbs, msg_time)))))
-                users[i].task_reasoning.collate_har_seq()
+
+            except ValueError as e:
+                # When action is robot action so not found in user action list
+                users[i].task_reasoning.imu_state_hist = np.vstack((users[i].task_reasoning.imu_state_hist, [float(users[i].ACTION_CATEGORIES.index('null')), 0, msg_time, msg_time]))
+                null_probs = 1
             
-            elif data.Header.frame_id[-8:] == '_gesture':
-                users[i].task_reasoning.gesture_handler(np.argmax(data.ActionProbs), msg_time)
+            users[i].task_reasoning.imu_pred_hist = np.vstack((users[i].task_reasoning.imu_pred_hist, (np.hstack((null_probs, data.ActionProbs, msg_time)))))
+            users[i].task_reasoning.collate_har_seq()
+        
+        elif data.Header.frame_id[-9:] == '_gestures':
+            users[i].task_reasoning.gesture_handler(np.argmax(data.ActionProbs), msg_time)
 
 
 def sys_stat_callback(data, users):
@@ -231,7 +234,7 @@ def users_node():
             next_action = False
 
         if (id_check != 0) and (not task_started):
-            id_success = perform_id_check(users, usr_fdbck_pub)
+            id_success = perform_id_check(users, usr_fdbck_pub, frame_id)
             if id_success:
                 id_check = 0
         
@@ -287,7 +290,7 @@ def users_test_node():
             next_action = False
 
         if (id_check != 0) and (not task_started):
-            id_success = perform_id_check(users, usr_fdbck_pub)
+            id_success = perform_id_check(users, usr_fdbck_pub, frame_id)
             if id_success:
                 id_check = 0
         

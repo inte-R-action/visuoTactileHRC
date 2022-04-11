@@ -1,19 +1,19 @@
 <launch>
 
   <!-- By default, we are not in debug mode -->
-  <arg name="test_mode" default="false" />
+  <arg name="test_mode" default="true" />
   <arg name="task" default="assemble_complex_box" />
   <arg name="classifier" default="one" />
-  <arg name="gui" default="false" />
+  <arg name="gui" default="true" />
 
   <arg if="$(arg test_mode)" name="im_recog" default="false" />
   <arg if="$(arg test_mode)" name="postgresql" default="true" />
-  <arg if="$(arg test_mode)" name="robot_controller" default="true" />
+  <arg if="$(arg test_mode)" name="robot_controller" default="false" />
   <arg if="$(arg test_mode)" name="robot_controller_test" default="false" />
   <arg if="$(arg test_mode)" name="users_node" default="true" />
   <arg if="$(arg test_mode)" name="shimmerBase" default="false" />
   <arg if="$(arg test_mode)" name="fake_imu_node" default="false" />
-  <arg if="$(arg test_mode)" name="fake_sensors_node" default="true" />
+  <arg if="$(arg test_mode)" name="fake_sensors_node" default="false" />
 
   <arg unless="$(arg test_mode)" name="im_recog" default="false" />
   <arg unless="$(arg test_mode)" name="postgresql" default="true" />

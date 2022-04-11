@@ -31,10 +31,10 @@ class User:
         self.perception = perception_module(self.name, self.id, self.frame_id, self.ACTION_CATEGORIES)
         self.task_reasoning = reasoning_module(self.name, self.id, self.frame_id, self.ACTION_CATEGORIES)
 
-    def update_user_details(self, name=None, Id=None, task=None):
+    def update_user_details(self, frame_id=None, name=None, Id=None, task=None):
         if name:
             self.name = name
-            self.frame_id = f"{self.frame_id}_{self.name}"
+            self.frame_id = f"{frame_id}_{self.name}"
             self.perception.update_user_details(name=name, frame_id=self.frame_id)
             self.task_reasoning.update_user_details(name=name, frame_id=self.frame_id)
         if Id:

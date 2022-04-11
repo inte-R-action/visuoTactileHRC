@@ -11,6 +11,11 @@ import tensorflow_addons as tfa
 import csv
 from global_data import GESTURES
 from std_msgs.msg import String
+import tensorflow as tf
+
+physical_devices = tf.config.experimental.list_physical_devices('GPU')
+if len(physical_devices) > 0:
+   tf.config.experimental.set_memory_growth(physical_devices[0], True)
 
 plt.ion()
 
@@ -58,8 +63,8 @@ class perception_module:
             self.ges_obj.act_msg.UserId = self.id
         if frame_id:
             self.frame_id = frame_id
-            self.act_obj.act_msg.Header.frame_id = self.frame_id
-            self.ges_obj.act_msg.Header.frame_id = self.frame_id
+            self.act_obj.act_msg.Header.frame_id = self.frame_id+'_actions'
+            self.ges_obj.act_msg.Header.frame_id = self.frame_id+'_gestures'
 
     def load_imu_scale_parameters(self, folder):
         # load scaling parameters
