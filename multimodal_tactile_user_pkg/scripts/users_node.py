@@ -53,6 +53,12 @@ def perform_id_check(users, usr_fdbck_pub, frame_id):
     #success, name = cameraIDcheck()
     try:
         users[i].update_user_details(name=name, task=USER_PARAMETERS[name], frame_id=frame_id)
+        db = database()
+        sql_cmd = f"""DELETE FROM future_action_predictions WHERE user_id = {users[i].id};"""
+        db.gen_cmd(sql_cmd)
+        sql_cmd = f"""DELETE FROM users WHERE user_id = {users[i].id};"""
+        db.gen_cmd(sql_cmd)
+        db.insert_data_list("users", ['user_id', 'user_name', 'last_active'], [(users[i].id, name, datetime.now())])
     except Exception as e:
         success = False
     
@@ -74,12 +80,11 @@ def setup_user(users, frame_id, task, name=None):
     users.append(User(name, id, frame_id, args.test))
 
     db = database()
-    time = datetime.utcnow()
     sql_cmd = f"""DELETE FROM future_action_predictions WHERE user_id = {id};"""
     db.gen_cmd(sql_cmd)
     sql_cmd = f"""DELETE FROM users WHERE user_id = {id};"""
     db.gen_cmd(sql_cmd)
-    db.insert_data_list("users", ['user_id', 'user_name', 'last_active'], [(id, name, time)])
+    db.insert_data_list("users", ['user_id', 'user_name', 'last_active'], [(id, name, datetime.utcnow())])
 
     users[id-1].update_task(task)
     return users
@@ -122,7 +127,7 @@ def current_action_callback(data, users):
                 null_probs = 1-data.ActionProbs[action_idx]
 
                 if data.ActionProbs[action_idx] > null_probs:
-                    users[i].task_reasoning.imu_state_hist = np.vstack((users[i].task_reasoning.imu_state_hist, [float(users[i].ACTION_CATEGORIES.index(users[i].curr_action_type)), 0, msg_time, msg_time]))
+                    users[i].task_reasoning.imu_state_hist = np.vstack((users[i].task_reasoning.imu_state_hist, [float(users[i].ACTION_CATEGORIES.index(users[i].task_reasoning.curr_action_type)), 0, msg_time, msg_time]))
                 else:
                     users[i].task_reasoning.imu_state_hist = np.vstack((users[i].task_reasoning.imu_state_hist, [float(users[i].ACTION_CATEGORIES.index('null')), 0, msg_time, msg_time]))
 
@@ -162,7 +167,7 @@ def sys_stat_callback(data, users):
 def sys_cmd_callback(msg):
     """callback for system command messages"""
     global task_started, next_action, id_check
-    print(msg.data[0:19])
+    print(msg.data)
     if msg.data == 'start':
         task_started = True
     elif msg.data == 'next_action':
@@ -219,7 +224,9 @@ def users_node():
     rospy.Subscriber("IMUdata", threeIMUs, imu_data_callback, (users))
 
     rate = rospy.Rate(2)  # 2hz, update predictions every 0.5 s
-    
+
+    diag_obj.publish(0, "Running")
+    time.sleep(1)
     usr_fdbck_pub.publish("Wave to start system")
     while not rospy.is_shutdown():
         # rospy.loginfo(f"{frame_id} active")
@@ -276,6 +283,9 @@ def users_test_node():
     rospy.Subscriber("IMUdata", threeIMUs, imu_data_callback, (users))
 
     rate = rospy.Rate(2)  # 2hz, update predictions every 0.5 s
+
+    diag_obj.publish(0, "Running")
+    time.sleep(1)
     usr_fdbck_pub.publish("Wave to start system")
     while not rospy.is_shutdown():
         # rospy.loginfo(f"{frame_id} active")

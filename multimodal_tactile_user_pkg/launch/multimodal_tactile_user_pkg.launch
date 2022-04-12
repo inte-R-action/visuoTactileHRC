@@ -1,7 +1,7 @@
 <launch>
 
   <!-- By default, we are not in debug mode -->
-  <arg name="test_mode" default="true" />
+  <arg name="test_mode" default="false" />
   <arg name="task" default="assemble_complex_box" />
   <arg name="classifier" default="one" />
   <arg name="gui" default="true" />
@@ -36,12 +36,12 @@
   </group>
 
   <group if="$(arg postgresql)">
-    <node name="postgresql_node" pkg="multimodal_tactile_user_pkg" type="postgresql_node.py" respawn="false" output="screen">
+    <node name="Database_node" pkg="multimodal_tactile_user_pkg" type="postgresql_node.py" respawn="false" output="screen">
     </node>
   </group>
 
   <group if="$(arg robot_controller)">
-    <node name="robot_controller" pkg="multimodal_tactile_user_pkg" type="robot_controller.py" respawn="false" output="screen">
+    <node name="robot_control_node" pkg="multimodal_tactile_user_pkg" type="robot_controller.py" respawn="false" output="screen">
     </node>
   </group>
 

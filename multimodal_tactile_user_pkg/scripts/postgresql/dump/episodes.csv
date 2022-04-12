@@ -1,3 +1,8 @@
 episode_id,date,start_t,end_t,duration,user_id,hand,task_name,action_name,action_no
-1,2022-04-11,18:09:33,18:09:40,00:00:07,1,R,assemble_complex_box,Stop,0
-3,2022-04-11,18:09:41,18:09:41,00:00:00,1,R,assemble_complex_box,Wave,0
+1,2022-04-12,00:28:23,00:28:26,00:00:03,1,R,assemble_complex_box,Wave,0
+2,2022-04-12,00:28:29,00:28:29,00:00:00,1,R,assemble_complex_box,Forward,0
+3,2022-04-12,14:06:08.548285,14:06:28.574866,00:00:20.026581,0,-,assemble_complex_box,bring_side_1,0
+4,2022-04-12,00:28:25,00:29:06,00:00:41,1,R,assemble_complex_box,null,1
+5,2022-04-12,00:29:07,00:29:08,00:00:01,1,R,assemble_complex_box,screw_in,1
+6,2022-04-12,14:06:28.656192,14:06:48.954048,00:00:20.297856,0,-,move_stack,move_stack,0
+7,2022-04-12,14:06:49.096397,14:07:13.333206,00:00:24.236809,0,-,assemble_complex_box,bring_side_2,3

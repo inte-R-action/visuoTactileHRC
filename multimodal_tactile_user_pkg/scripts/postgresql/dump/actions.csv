@@ -34,3 +34,4 @@ action_id,action_name,std_dur_s,user_type
 32,Right,00:00:00,human
 33,Stop,00:00:00,human
 34,Null,00:00:00,human
+35,move_stack,00:00:25,robot

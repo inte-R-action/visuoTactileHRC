@@ -20,7 +20,7 @@ from statistics import mean
 os.chdir(os.path.expanduser("~/catkin_ws/src/visuoTactileHRC/"))
 
 #Define tables: tables = [{name, [col1 cmd, col2 cmd, ...]}, ]
-tables_to_make = ['tasks', 'actions', 'users', 'episodes', 'assemble_box', 'assemble_chair', 'assemble_complex_box', 'assemble_complex_box_manual', 'stack_tower', 'future_action_predictions', 'robot_action_timings']
+tables_to_make = ['tasks', 'actions', 'users', 'episodes', 'assemble_box', 'assemble_chair', 'assemble_complex_box', 'assemble_complex_box_manual', 'stack_tower', 'move_stack', 'future_action_predictions', 'robot_action_timings']
 tables = [['tasks', ["task_id SERIAL PRIMARY KEY",
                     "task_name VARCHAR(255) NOT NULL UNIQUE"]+[f"{action} FLOAT" for action in ACTIONS]],
         ['actions', ["action_id SERIAL PRIMARY KEY",
@@ -65,6 +65,12 @@ tables = [['tasks', ["task_id SERIAL PRIMARY KEY",
                     "user_type VARCHAR(5)",
                     "prev_dependent BOOL"]],
         ['stack_tower', ["action_no SERIAL PRIMARY KEY",
+                    "action_id INTEGER REFERENCES actions(action_id)",
+                    "action_name VARCHAR(255) REFERENCES actions(action_name)",
+                    "default_time INTERVAL",
+                    "user_type VARCHAR(5)",
+                    "prev_dependent BOOL"]],
+        ['move_stack', ["action_no SERIAL PRIMARY KEY",
                     "action_id INTEGER REFERENCES actions(action_id)",
                     "action_name VARCHAR(255) REFERENCES actions(action_name)",
                     "default_time INTERVAL",
@@ -167,7 +173,7 @@ def load_tables(db):
     for name in tables_to_make:
         try:
             db.csv_import(f"{base_dir}{name}.csv", tab_name=name)
-            if name in ('assemble_box', 'assemble_chair', 'stack_tower', 'assemble_complex_box', 'assemble_complex_box_manual'):
+            if name in ('assemble_box', 'assemble_chair', 'stack_tower', 'move_stack', 'assemble_complex_box', 'assemble_complex_box_manual'):
                 # Update times and action ids from actions table
                 sql = f"UPDATE {name} SET action_id = actions.action_id, default_time = actions.std_dur_s FROM actions WHERE actions.action_name = {name}.action_name"
                 db.gen_cmd(sql)

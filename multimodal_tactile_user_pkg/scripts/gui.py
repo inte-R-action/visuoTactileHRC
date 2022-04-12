@@ -323,7 +323,7 @@ class shutting_down_window():
         self.root.wm_title("Shutting Down...")
         self.root.geometry(f'{self.Window_Width}x{self.Window_Height}')
 
-        l = Tk.Label(self.root, text = "Dreaming State")
+        l = Tk.Label(self.root, text = "Goodbye!")
         l.config(font =("Courier", 20))
         l.pack(fill=Tk.BOTH)
 
@@ -399,7 +399,7 @@ class GUI:
                            ['users_node', None],
                            ['skeleton_viewer', None],
                            ['robot_control_node', None],
-                           ['hri_static_demo', None],
+                           ['multimodal_tactile_robot_control', None],
                            ['rq_gripper_2F140', None]]
         i = 0
         for node in self.nodes_list:
@@ -439,7 +439,7 @@ class GUI:
 
         # User Feedback Text
         self.usr_feedback_text = f"Please wait, system starting"
-        self.usr_feedback = Tk.Text(master=self.sys_frame, height=2)#, font=("Courier", 20))
+        self.usr_feedback = Tk.Text(master=self.sys_frame, height=2, font=("Courier", 14))
         self.usr_feedback.grid(row=5, column=0, sticky="nsew")
         self.usr_feedback.insert(Tk.INSERT, self.usr_feedback_text)
 
