@@ -257,9 +257,9 @@ class node_indicator:
     def __init__(self, node_name, master, i):
         self.name = node_name
         self.status = None
-        self.indicator = Tk.Label(master=master, bg="grey", text=node_name,
-                                  width=1, padx=10, pady=3, borderwidth=2, relief="ridge")
-        self.indicator.grid(row=i % 2, column=int(i/2), sticky="nsew")
+        self.indicator = Tk.Label(master=master, bg="grey", text=node_name, width=10,
+                                   padx=10, pady=3, borderwidth=2, relief="ridge")
+        self.indicator.grid(row=int(i/2), column=i % 2, sticky="nsew")
         self.update_time = None
 
 
@@ -377,7 +377,7 @@ class GUI:
         self.root.grid_rowconfigure(0, weight=0)
         self.root.grid_rowconfigure(1, weight=1)
         self.root.grid_rowconfigure(2, weight=1)
-        self.root.grid_rowconfigure(2, weight=0)
+        self.root.grid_rowconfigure(3, weight=0)
 
     def create_system_frame(self):
         self.sys_frame = Tk.Frame(master=self.root, bg="dodger blue")
@@ -407,8 +407,8 @@ class GUI:
             i += 1
 
         # Adjust spacing of objects
-        self.node_stats.grid_columnconfigure((0, 1, 2), weight=1)
-        self.node_stats.grid_rowconfigure((0, 1), weight=1)
+        self.node_stats.grid_columnconfigure((0, 1), weight=1)
+        self.node_stats.grid_rowconfigure((0, 1, 2), weight=1)
 
         # Robot Status Text
         self.robot_stat_text = "Robot status: unknown"
@@ -430,8 +430,16 @@ class GUI:
         self.tasks["columns"] = self.col_names
 
         for i in self.col_names:
-            self.tasks.column(i, anchor="center", stretch=True, width=20)
-            self.tasks.heading(i, text=i, anchor='center')
+            if i == "last_completed_action_no":
+                txt = "prev action no"
+            elif i == "user_id":
+                txt = "id"
+            elif i == "user_name":
+                txt = "name"
+            else:
+                txt = i
+            self.tasks.column(i, anchor="center", stretch=True, width=8*len(txt))
+            self.tasks.heading(i, text=txt, anchor='center')
 
         for index, row in self.robot_tasks_data.iterrows():
             self.tasks.insert("", index=index, values=list(
@@ -439,7 +447,7 @@ class GUI:
 
         # User Feedback Text
         self.usr_feedback_text = f"Please wait, system starting"
-        self.usr_feedback = Tk.Text(master=self.sys_frame, height=2, font=("Courier", 14))
+        self.usr_feedback = Tk.Text(master=self.sys_frame, height=2, font=("Courier", 14), wrap='word', width=20)
         self.usr_feedback.grid(row=5, column=0, sticky="nsew")
         self.usr_feedback.insert(Tk.INSERT, self.usr_feedback_text)
 

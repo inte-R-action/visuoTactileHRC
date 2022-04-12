@@ -15,6 +15,7 @@ from postgresql.database_funcs import database
 import os
 from global_data import ACTIONS, TASKS, DEFAULT_TASK, GESTURES, USER_PARAMETERS
 import threading
+from vision_recognition.qrcode_recognition import read_QR
 
 os.chdir(os.path.expanduser("~/catkin_ws/src/visuoTactileHRC/"))
 
@@ -34,7 +35,7 @@ parser.add_argument('--task_type', '-T',
 parser.add_argument('--test',
                     help='Test mode without sensors',
                     choices=[True, False],
-                    default=False)
+                    default=True)
 
 args = parser.parse_known_args()[0]
 print(f"Users node settings: {args.task_type}")
@@ -47,25 +48,24 @@ id_check = 0
 
 def perform_id_check(users, usr_fdbck_pub, frame_id):
     usr_fdbck_pub.publish("Face camera for ID check")
-    success = True
     i = [idx for idx, user in enumerate(users) if int(id_check) == user.id][0]
-    name = "James"
-    #success, name = cameraIDcheck()
-    try:
-        users[i].update_user_details(name=name, task=USER_PARAMETERS[name], frame_id=frame_id)
-        db = database()
-        sql_cmd = f"""DELETE FROM future_action_predictions WHERE user_id = {users[i].id};"""
-        db.gen_cmd(sql_cmd)
-        sql_cmd = f"""DELETE FROM users WHERE user_id = {users[i].id};"""
-        db.gen_cmd(sql_cmd)
-        db.insert_data_list("users", ['user_id', 'user_name', 'last_active'], [(users[i].id, name, datetime.now())])
-    except Exception as e:
-        success = False
+    success, name = read_QR()
     
     if success:
-        usr_fdbck_pub.publish(f"Hello {name}!")
-        time.sleep(1)
-        usr_fdbck_pub.publish("Gesture forwards to start task")
+        try:
+            users[i].update_user_details(name=name, task=USER_PARAMETERS[name], frame_id=frame_id)
+            db = database()
+            sql_cmd = f"""DELETE FROM future_action_predictions WHERE user_id = {users[i].id};"""
+            db.gen_cmd(sql_cmd)
+            sql_cmd = f"""DELETE FROM users WHERE user_id = {users[i].id};"""
+            db.gen_cmd(sql_cmd)
+            db.insert_data_list("users", ['user_id', 'user_name', 'last_active'], [(users[i].id, name, datetime.now())])
+
+            usr_fdbck_pub.publish(f"Hello {name}!")
+            time.sleep(1)
+            usr_fdbck_pub.publish("Gesture forwards to start task")
+        except Exception as e:
+            success = False
     else:
         usr_fdbck_pub.publish("ID check failed :(, I'll try again")
         time.sleep(1)
