@@ -20,6 +20,7 @@ user_node_stat = 1
 start_trial = False
 next_action = False
 id_check = False
+stop = False
 
 
 def sys_stat_callback(data):
@@ -36,13 +37,18 @@ def sys_stat_callback(data):
 
 def sys_cmd_callback(msg):
     """callback for system command messages"""
-    global start_trial, next_action, id_check
+    global start_trial, next_action, id_check, stop
     if msg.data == 'start':
         start_trial = True
     elif msg.data == 'next_action':
-        next_action = True
+        if not stop:
+            next_action = True
+        else:
+            stop = False
     elif msg.data[0:19] == 'user_identification':
         id_check = True
+    elif msg.data == 'Stop':
+        stop = True
 
 
 def send_robot_home(predictor, move_obj):
@@ -264,7 +270,7 @@ class robot_solo_task():
 
 
 def robot_control_node():
-    global next_action, id_check
+    global next_action, id_check, stop
 
     # ROS node setup
     frame_id = 'robot_control_node'
@@ -314,7 +320,7 @@ def robot_control_node():
                 predictor.future_estimates.robot_start_t ==
                 predictor.future_estimates.robot_start_t.min()]
 
-            if not row.empty:
+            if (not row.empty) and (not stop):
                 if ((row['robot_start_t'][0] <= pd.Timedelta(0)) or (next_action)) and (row['done'][0] is False):
                     # if time to next colab < action time start colab action
                     home = False

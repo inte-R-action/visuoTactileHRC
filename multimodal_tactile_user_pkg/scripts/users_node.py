@@ -28,22 +28,23 @@ parser.add_argument('--user_names', '-N',
                     help='Set name of user, default: unknown',
                     default='j',
                     type=lambda s: [str(item) for item in s.split(',')])
-parser.add_argument('--task_type', '-T',
-                    help='Task for users to perform, options: assemble_complex_box (default)',
-                    choices=TASKS,
-                    default=DEFAULT_TASK)
+# parser.add_argument('--task_type', '-T',
+#                     help='Task for users to perform, options: assemble_complex_box (default)',
+#                     choices=TASKS,
+#                     default=DEFAULT_TASK)
 parser.add_argument('--test',
                     help='Test mode without sensors',
                     choices=[True, False],
-                    default=True)
+                    default=False)
 
 args = parser.parse_known_args()[0]
-print(f"Users node settings: {args.task_type}")
+
 database_stat = 1
 shimmer_stat = 1
 task_started = False
 next_action = False
 id_check = 0
+stop = False
 
 
 def perform_id_check(users, usr_fdbck_pub, frame_id):
@@ -72,7 +73,7 @@ def perform_id_check(users, usr_fdbck_pub, frame_id):
     return success
 
 
-def setup_user(users, frame_id, task, name=None):
+def setup_user(users, frame_id, name=None):
     id = len(users)+1
     if name is None:
         name = "unknown"
@@ -86,7 +87,7 @@ def setup_user(users, frame_id, task, name=None):
     db.gen_cmd(sql_cmd)
     db.insert_data_list("users", ['user_id', 'user_name', 'last_active'], [(id, name, datetime.utcnow())])
 
-    users[id-1].update_task(task)
+    # users[id-1].update_task(task)
     return users
 
 
@@ -166,14 +167,18 @@ def sys_stat_callback(data, users):
 
 def sys_cmd_callback(msg):
     """callback for system command messages"""
-    global task_started, next_action, id_check
-    print(msg.data)
+    global task_started, next_action, id_check, stop
     if msg.data == 'start':
         task_started = True
     elif msg.data == 'next_action':
-        next_action = True
+        if not stop:
+            next_action = True
+        else:
+            stop = False
     elif msg.data[0:19] == 'user_identification':
         id_check = msg.data[-1]
+    elif msg.data == 'Stop':
+        stop = True
 
 
 def update_user_data_seq(user):
@@ -208,7 +213,7 @@ def users_node():
     for _ in range(num_users): # args.user_names:
         name = "unknown"
         # Create user object
-        users = setup_user(users, frame_id, args.task_type, name)
+        users = setup_user(users, frame_id, name)
         # Thread to update sensor data windows
         user_threads.append(threading.Thread(target=update_user_data_seq, args=(users[-1],), daemon=True))
         user_threads[-1].start()
@@ -274,7 +279,7 @@ def users_test_node():
     for _ in range(num_users): # args.user_names:
         name = "unknown"
         # Create user object
-        users = setup_user(users, frame_id, args.task_type, name)
+        users = setup_user(users, frame_id, name)
         # Thread to update sensor data windows
         user_threads.append(threading.Thread(target=update_user_data_seq, args=(users[-1],), daemon=True))
         user_threads[-1].start()
@@ -285,7 +290,7 @@ def users_test_node():
     rate = rospy.Rate(2)  # 2hz, update predictions every 0.5 s
 
     diag_obj.publish(0, "Running")
-    time.sleep(1)
+    time.sleep(3)
     usr_fdbck_pub.publish("Wave to start system")
     while not rospy.is_shutdown():
         # rospy.loginfo(f"{frame_id} active")

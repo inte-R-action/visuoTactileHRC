@@ -448,6 +448,7 @@ class GUI:
         # User Feedback Text
         self.usr_feedback_text = f"Please wait, system starting"
         self.usr_feedback = Tk.Text(master=self.sys_frame, height=2, font=("Courier", 14), wrap='word', width=20)
+        self.usr_feedback.tag_configure("feedback_tag_center", justify='center')
         self.usr_feedback.grid(row=5, column=0, sticky="nsew")
         self.usr_feedback.insert(Tk.INSERT, self.usr_feedback_text)
 
@@ -567,6 +568,7 @@ class GUI:
             # Update user feedback text
             self.usr_feedback.delete("1.0", Tk.END)
             self.usr_feedback.insert(Tk.INSERT, self.usr_feedback_text)
+            self.usr_feedback.tag_add("feedback_tag_center", "1.0", "end")
 
             # Configure layout and update plots
             # self.root.grid_columnconfigure(0, weight=1)

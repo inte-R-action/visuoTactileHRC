@@ -60,7 +60,7 @@ class reasoning_module:
                     time = 0
                 else:
                     if i == self.curr_action_no:
-                        t_left_action = min(max(datetime.now()-self.curr_action_start_t, timedelta()), row['default_time'])
+                        t_left_action = min(max(row['default_time']-(datetime.now()-self.curr_action_start_t), timedelta()), row['default_time'])
                     else:
                         t_left_action = row['default_time']
                     
@@ -140,10 +140,8 @@ class reasoning_module:
             tasks_left = self.task_data
 
         next_robot_action_idx = int(tasks_left[tasks_left['user_type']=='robot'].first_valid_index())
-        print(next_robot_action_idx)
         i = 0
         for r in range(next_robot_action_idx):
-            print(self.task_data.loc[r])
             if self.task_data.loc[r]['user_type'] == 'human':
                 self.output_override[i] = 1
                 self.task_data.iloc[r, self.task_data.columns.get_loc("started")] = 1
@@ -155,7 +153,6 @@ class reasoning_module:
         self.curr_action_type = self.task_data.iloc[next_action_row_i]["action_name"]
         if self.task_started:
             self.usr_fdbck_pub.publish(f"Waiting for {self.curr_action_type} action")
-        print(self.output_override)
 
     def collate_episode(self):
         self.final_state_hist = np.vstack((self.final_state_hist, self.imu_state_hist[-3, :]))
@@ -167,10 +164,14 @@ class reasoning_module:
     
     def pub_episode(self, start_t, end_t, action_name):
         dur = end_t - start_t
+        if self.task_data is not None:
+            act_no = int(self.task_data.loc[self.curr_action_no]['action_no'])
+        else:
+            act_no = None
          # Can publish new episode to sql
         self.db.insert_data_list("Episodes", 
         ["date", "start_t", "end_t", "duration", "user_id", "hand", "task_name", "action_name", "action_no"], 
-        [(date.today(), start_t, end_t, dur, self.id, "R", self.task, action_name, int(self.task_data.loc[self.curr_action_no]['action_no']))])
+        [(date.today(), start_t, end_t, dur, self.id, "R", self.task, action_name, act_no)])
 
     def update_robot_progress(self):
         try:
@@ -242,7 +243,8 @@ class reasoning_module:
         #print('state hist: ', self.imu_state_hist)
         #print('pred hist: ', self.imu_pred_hist)
         if np.shape(self.imu_state_hist)[0] >= 4:
-            self.update_robot_progress()
+            if self.task_data is not None:
+                self.update_robot_progress()
 
             if (self.imu_state_hist[-1, 0] == self.imu_state_hist[-3, 0]):
                 self.imu_state_hist[-2, 0] = self.imu_state_hist[-1, 0]
@@ -286,7 +288,11 @@ class reasoning_module:
                         self.cmd_publisher.publish('next_action')
                         self.usr_fdbck_pub.publish(f"Sorry I'm behind, next action coming!")
                     elif gesture == "Stop":
-                        self.usr_fdbck_pub.publish(f"STOP received")
+                        self.cmd_publisher.publish('Stop')
+                        self.usr_fdbck_pub.publish(f"STOP received. FORWARD to resume")
+                    elif (gesture == "Forward"):
+                        self.cmd_publisher.publish('next_action')
+                        self.usr_fdbck_pub.publish(f"Resuming")
                 else:
                     if (gesture == "Wave") and (self.name == "unknown"):
                         self.cmd_publisher.publish(f'user_identification_{self.id}')

@@ -1,10 +1,10 @@
 action_id,action_name,std_dur_s,user_type
-0,screw_in,00:00:14.243056,human
+0,screw_in,00:00:08,human
 1,screw_out,00:00:15,human
-2,allen_in,00:00:13.895833,human
+2,allen_in,00:00:14,human
 3,allen_out,00:00:15,human
-4,bring_side_1,00:00:15,robot
-5,bring_side_2,00:00:16,robot
+4,bring_side_1,00:00:16,robot
+5,bring_side_2,00:00:17,robot
 6,bring_side_3,00:00:18,robot
 7,bring_side_4,00:00:19,robot
 8,take_box,00:00:01,robot
@@ -17,9 +17,9 @@ action_id,action_name,std_dur_s,user_type
 15,remove_stack,00:00:26,robot
 16,home,00:00:05,robot
 17,deliver_box,00:00:00,robot
-18,hand_screw_in,00:00:16.635417,human
+18,hand_screw_in,00:00:08,human
 19,hand_screw_out,00:00:03,human
-20,hammer,00:00:11.53125,human
+20,hammer,00:00:04,human
 21,bring_hand_screw_parts,00:00:15,robot
 22,bring_seat_top,00:00:24,robot
 23,bring_back_frame,00:00:24,robot
