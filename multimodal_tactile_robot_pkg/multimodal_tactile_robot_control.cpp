@@ -68,7 +68,7 @@ void pick_up_object(moveit_robot &Robot, double down_move_dist = 0.05)
     Robot.open_gripper();
     Robot.z_move(-down_move_dist, 0.8);
     //Robot.close_gripper();
-      Robot.close_gripper_touch();  
+    Robot.close_gripper_touch();
     Robot.z_move(down_move_dist, 1);
 }
 
@@ -76,9 +76,9 @@ void handover_object_to_robot(moveit_robot &Robot, double down_move_dist = 0.05)
 {
     // Robot moves down, grasps part and moves back to original position
     Robot.open_gripper();
-   // Robot.z_move(-down_move_dist, 0.8);
+    //Robot.z_move(-down_move_dist, 0.8);
     //Robot.close_gripper();
-      Robot.close_gripper_h2r_handover();  
+    Robot.close_gripper_h2r_handover();  
     //Robot.z_move(down_move_dist, 1);
 }
 
@@ -107,7 +107,7 @@ void bring_part_to_user(string bring_cmd, std::map<std::string, double> &targetJ
         bring_cmd=="bring_side_3" || bring_cmd=="bring_side_4" || \
         bring_cmd=="bring_back_slats" )
     {          
-        pick_up_object(Robot, 0.02);
+        pick_up_object(Robot, 0.03);
         // Move to user delivery position
         Robot.move_robot(targetJoints, bring_cmd, string("deliver_2_user"));
         // Move down, set down part, move up
@@ -117,18 +117,27 @@ void bring_part_to_user(string bring_cmd, std::map<std::string, double> &targetJ
     }
     else if( bring_cmd=="bring_hand_screw_parts" || bring_cmd=="bring_legs" )
     {          
-        pick_up_object(Robot, 0.065);
+        pick_up_object(Robot, 0.05);
         // Move to user delivery position
         Robot.move_robot(targetJoints, bring_cmd, string("deliver_2_user"));
         // Move down, set down part, move up
         //set_down_object(Robot, 0.03, 0.5); //>>>>>> Add tactile gripper open stuff instead of this line
         Robot.open_gripper_release();
     }
-    else if( bring_cmd=="bring_seat_top" || bring_cmd=="bring_back_frame" )
+    else if( bring_cmd=="bring_seat_top" )
     {
-        pick_up_object(Robot, 0.07);
+        pick_up_object(Robot, 0.02);
         // Move to user delivery position
-        Robot.move_robot(targetJoints, bring_cmd, string("deliver_big_2_user"));
+        Robot.move_robot(targetJoints, bring_cmd, string("deliver_2_user"));
+        // Move down, set down part, move up
+        //set_down_object(Robot, 0.04, 0.5); //>>>>>> Add tactile gripper open stuff instead of this line
+        Robot.open_gripper_release();
+    }
+    else if( bring_cmd=="bring_back_frame" )
+    {
+        pick_up_object(Robot, 0.04);
+        // Move to user delivery position
+        Robot.move_robot(targetJoints, bring_cmd, string("deliver_2_user"));
         // Move down, set down part, move up
         //set_down_object(Robot, 0.04, 0.5); //>>>>>> Add tactile gripper open stuff instead of this line
         Robot.open_gripper_release();
