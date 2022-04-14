@@ -25,9 +25,64 @@
 #include <unistd.h>
 #include <map>
 #include "multimodal_tactile_custom_msgs/diagnostics.h"
+#include "std_msgs/Bool.h"
+#include "std_msgs/Int32.h"
+#include "std_msgs/Float32.h"
+#include "std_msgs/Float32MultiArray.h"
 
 using namespace std;
 
+// global variable to hold the status of the tactile sensor
+bool touchDetected = false, touchDetected2 = false, touchDetected3 = false;
+
+// global variable to start the data storing
+bool ready_to_write = false;
+
+// global variable to hold the gyroscope data of three tactile sensors
+float gyro1_x, gyro1_y, gyro1_z, gyro2_x, gyro2_y, gyro2_z, gyro3_x, gyro3_y, gyro3_z; 
+float accel1_x, accel1_y, accel1_z, accel2_x, accel2_y, accel2_z, accel3_x, accel3_y, accel3_z; 
+float pressure1, pressure2, pressure3;
+
+bool ref_val = false;
+
+float base_val1 = 0.0, base_val2 = 0.0, base_val3 = 0.0;
+float Last_val1[2], Last_val2[2], Last_val_kalmanx1[2], Last_val3[2];
+
+void sensor1Callback(const std_msgs::Float32MultiArray::ConstPtr& msg)
+{    
+     accel1_x = msg->data[0]; // ROS_INFO("I heard Sensor1: [%f]", msg->x);
+     accel1_y = msg->data[1];
+     accel1_z = msg->data[2];
+     gyro1_x = msg->data[3];
+     gyro1_y = msg->data[4];
+     gyro1_z = msg->data[5];
+     pressure1 = msg->data[6];
+     touchDetected2 = msg->data[7];
+}
+
+void sensor2Callback(const std_msgs::Float32MultiArray::ConstPtr& msg)
+{
+     accel2_x = msg->data[0]; // ROS_INFO("I heard Sensor2: [%f]", msg->x);
+     accel2_y = msg->data[1];
+     accel2_z = msg->data[2];
+     gyro2_x = msg->data[3];
+     gyro2_y = msg->data[4];
+     gyro2_z = msg->data[5];
+     pressure2 = msg->data[6];
+     touchDetected = msg->data[7];   
+}
+
+void sensor3Callback(const std_msgs::Float32MultiArray::ConstPtr& msg)
+{
+     accel3_x = msg->data[0];
+     accel3_y = msg->data[1];
+     accel3_z = msg->data[2];
+     gyro3_x = msg->data[3];
+     gyro3_y = msg->data[4];
+     gyro3_z = msg->data[5];
+     pressure3 = msg->data[6];
+     touchDetected3 = msg->data[7];
+}
 
 string gripper_action = "";
 
@@ -97,6 +152,10 @@ int main(int argc, char** argv)
     ros::Publisher gripperStatusPub = node_handle.advertise<std_msgs::String>("Gripper2UR", 1000);
     ros::Subscriber robotStatusSub = node_handle.subscribe("UR2Gripper", 1000, robotCommandStatusCallback);
 
+    ros::Subscriber sensor1_sub = node_handle.subscribe("icmData1", 100, sensor1Callback);
+    ros::Subscriber sensor2_sub = node_handle.subscribe("icmData2", 100, sensor2Callback);
+    ros::Subscriber sensor3_sub = node_handle.subscribe("icmData3", 100, sensor3Callback);
+
     ros::spinOnce();
     loop_rate.sleep();
 
@@ -123,8 +182,8 @@ int main(int argc, char** argv)
 
 
     int gripperSpeed = 10;
-    int gripperForce = 255;//25;
-    int gripperPosition = 255;
+    int gripperForce = 10;//25;
+    int gripperPosition = 200;
 
     outputControlValues.rGTO = 1;
     outputControlValues.rSP = gripperSpeed;
@@ -248,6 +307,45 @@ int main(int argc, char** argv)
         //{
         //   printf("Acknowledge from UR received \n");
         //}
+         else if (gripper_action == "grasp_touch")
+        {
+            // close the gripper to the maximum value of rPR = 255
+            // rGTO = 1 allows the robot to perform an action
+            outputControlValues.rGTO = 1;
+            outputControlValues.rSP = gripperSpeed;
+            outputControlValues.rFR = gripperForce;
+            outputControlValues.rPR = gripperPosition;
+
+            Robotiq2FGripperArgPub.publish(outputControlValues);
+            std::cout << "CLOSE GRIPPER" << std::endl; 
+
+            // wait until the activation action is completed to continue with the next action
+            while( gripperStatus.gOBJ != 3 && gripperStatus.gOBJ != 2 && touchDetected == false)
+            {
+                //printf("IN PROGRESS: gOBJ [%d]\n", gripperStatus.gOBJ);
+                usleep(100000);
+            }
+
+            printf("COMPLETED: gOBJ [%d]\n", gripperStatus.gOBJ);
+
+            printf("COMPLETED: gOBJ [%d]\n", gripperStatus.gOBJ);
+
+            // set gripper to standby to clear the flags
+            outputControlValues.rGTO = 0;
+            outputControlValues.rPR = 0;
+            outputControlValues.rSP = 0;
+            outputControlValues.rFR = 0;
+
+        Robotiq2FGripperArgPub.publish(outputControlValues);
+
+            while (gripper_action != "completion acknowledged")
+            {
+                msg.data = "grasp_completed";
+                gripperStatusPub.publish(msg);
+            }
+            printf("Acknowledge from UR received \n");
+
+        }   
         else
         {
             // keep current configuration

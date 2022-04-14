@@ -7,6 +7,8 @@
 // #include <moveit_msgs/CollisionObject.h>
 // #include <moveit_visual_tools/moveit_visual_tools.h>
 #include <moveit/trajectory_processing/iterative_time_parameterization.h>
+#include "std_msgs/Float32.h"
+#include "std_msgs/Float32MultiArray.h"
 // #include "std_msgs/String.h"
 // #include <iostream>
 // #include <unistd.h>
@@ -26,6 +28,58 @@
 
 namespace rvt = rviz_visual_tools;
 using namespace std;
+
+// global variable to hold the status of the tactile sensor
+bool touchDetected = false, touchDetected2 = false, touchDetected3 = false;
+
+// global variable to start the data storing
+bool ready_to_write = false;
+
+// global variable to hold the gyroscope data of three tactile sensors
+float gyro1_x, gyro1_y, gyro1_z, gyro2_x, gyro2_y, gyro2_z, gyro3_x, gyro3_y, gyro3_z; 
+float accel1_x, accel1_y, accel1_z, accel2_x, accel2_y, accel2_z, accel3_x, accel3_y, accel3_z; 
+float pressure1, pressure2, pressure3;
+
+bool ref_val = false;
+
+float base_val1 = 0.0, base_val2 = 0.0, base_val3 = 0.0;
+float Last_val1[2], Last_val2[2], Last_val_kalmanx1[2], Last_val3[2];
+
+void moveit_robot::sensor1Callback(const std_msgs::Float32MultiArray::ConstPtr& msg)
+{    
+     accel1_x = msg->data[0]; // ROS_INFO("I heard Sensor1: [%f]", msg->x);
+     accel1_y = msg->data[1];
+     accel1_z = msg->data[2];
+     gyro1_x = msg->data[3];
+     gyro1_y = msg->data[4];
+     gyro1_z = msg->data[5];
+     pressure1 = msg->data[6];
+     touchDetected2 = msg->data[7];
+}
+
+void moveit_robot::sensor2Callback(const std_msgs::Float32MultiArray::ConstPtr& msg)
+{
+     accel2_x = msg->data[0]; // ROS_INFO("I heard Sensor2: [%f]", msg->x);
+     accel2_y = msg->data[1];
+     accel2_z = msg->data[2];
+     gyro2_x = msg->data[3];
+     gyro2_y = msg->data[4];
+     gyro2_z = msg->data[5];
+     pressure2 = msg->data[6];
+     touchDetected = msg->data[7];   
+}
+
+void moveit_robot::sensor3Callback(const std_msgs::Float32MultiArray::ConstPtr& msg)
+{
+     accel3_x = msg->data[0];
+     accel3_y = msg->data[1];
+     accel3_z = msg->data[2];
+     gyro3_x = msg->data[3];
+     gyro3_y = msg->data[4];
+     gyro3_z = msg->data[5];
+     pressure3 = msg->data[6];
+     touchDetected3 = msg->data[7];
+}
 
 moveit_robot::moveit_robot(ros::NodeHandle* node_handle) : nh_(*node_handle), PLANNING_GROUP("manipulator"), visual_tools("world"), move_group(moveit::planning_interface::MoveGroupInterface(PLANNING_GROUP)) {
 
@@ -231,6 +285,10 @@ moveit_robot::moveit_robot(ros::NodeHandle* node_handle) : nh_(*node_handle), PL
     planning_scene_interface.addCollisionObjects(collision_objects);
     visual_tools.publishText(text_pose, "Add object", rvt::WHITE, rvt::XLARGE);
     visual_tools.trigger();
+
+    sensor1_sub = nh_.subscribe("icmData1", 100, &moveit_robot::sensor1Callback, this);
+    sensor2_sub = nh_.subscribe("icmData2", 100, &moveit_robot::sensor2Callback, this);
+    sensor3_sub = nh_.subscribe("icmData3", 100, &moveit_robot::sensor3Callback, this);
 }
 
 bool moveit_robot::plan_to_pose(geometry_msgs::Pose pose){
@@ -333,10 +391,55 @@ void moveit_robot::open_gripper(){
     gripper_cmds_pub.publish(gripper_msg);
 }
 
+void moveit_robot::open_gripper_release(){ // check this part again
+    // Open Gripper
+   // sleep(2);
+
+    while ( abs(gyro1_x) < 650 || abs(gyro1_y) < 650) {                                    
+            }  
+    
+    gripper_msg.data = "release";
+    while ((gripper_state != "release_completed") and ros::ok() )
+    {
+           gripper_cmds_pub.publish(gripper_msg);
+    }
+    gripper_msg.data = "completion acknowledged";
+    gripper_cmds_pub.publish(gripper_msg);
+   
+}
+
 void moveit_robot::close_gripper(){
     // Close Gripper
     gripper_msg.data = "grasp";
     while ((gripper_state != "grasp_completed") and ros::ok())
+    {
+        gripper_cmds_pub.publish(gripper_msg);
+    }
+    gripper_msg.data = "completion acknowledged";
+    gripper_cmds_pub.publish(gripper_msg);
+}
+
+void moveit_robot::close_gripper_h2r_handover(){ //check this part
+    // Close Gripper
+
+while (abs(gyro1_x) < 650 || abs(gyro1_y) < 650) {
+}
+
+    gripper_msg.data = "grasp_touch";
+    while ((gripper_state != "grasp_completed") and ros::ok())
+    {
+        gripper_cmds_pub.publish(gripper_msg);
+    }
+
+    gripper_msg.data = "completion acknowledged";
+    gripper_cmds_pub.publish(gripper_msg);
+}
+
+void moveit_robot::close_gripper_touch(){
+    // Close Gripper
+
+    gripper_msg.data = "grasp_touch";
+    while ((gripper_state != "grasp_completed") and ros::ok()) //(gripper_state != "grasp_completed") and )
     {
         gripper_cmds_pub.publish(gripper_msg);
     }

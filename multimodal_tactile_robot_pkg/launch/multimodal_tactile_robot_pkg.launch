@@ -8,12 +8,12 @@
   <arg     if="$(arg debug)" name="launch_prefix"
      value="gdb -x $(find ur3_moveit_config)/launch/gdb_settings.gdb --ex run --args" />
 
-  <node name="multimodal_tactile_robot_control" pkg="multimodal_tactile_robot_pkg" type="multimodal_tactile_robot_control" respawn="false" launch-prefix="$(arg launch_prefix)" output="screen">
+  <node name="multimodal_tactile_robot_control" pkg="multimodal_tactile_robot_pkg" type="multimodal_tactile_robot_control" respawn="false" launch-prefix="$(arg launch_prefix)" output="screen" required="true">
   </node>
-
-  <node name="multimodal_tactile_gripper_ctrl" pkg="multimodal_tactile_robot_pkg" type="multimodal_tactile_gripper_ctrl" respawn="false" launch-prefix="$(arg launch_prefix)" output="screen">
+<!--
+  <node name="multimodal_tactile_gripper_ctrl" pkg="multimodal_tactile_robot_pkg" type="multimodal_tactile_gripper_ctrl" respawn="false" launch-prefix="$(arg launch_prefix)" output="screen" required="true">
   </node>
-
+-->
   <include file="$(find ur3_moveit_config)/launch/ur3_moveit_planning_execution.launch">
     <arg name="sim" value="true" />
   </include>

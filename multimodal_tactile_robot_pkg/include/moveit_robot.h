@@ -23,6 +23,8 @@
 // #include <geometry_msgs/TransformStamped.h>
 // #include <tf2_ros/static_transform_broadcaster.h>
 #include <tf2_geometry_msgs/tf2_geometry_msgs.h>
+#include "std_msgs/Float32.h"
+#include "std_msgs/Float32MultiArray.h"
 
 using namespace std;
 
@@ -87,12 +89,22 @@ class moveit_robot
         bool plan_to_pose(geometry_msgs::Pose pose);
         void move_robot(std::map<std::string, double> targetJoints, std::string robot_action, std::string jnt_pos_name);
         void open_gripper();
+        void open_gripper_release();
         void close_gripper();
+        void close_gripper_touch();
+        void close_gripper_h2r_handover();
         void z_move(double dist, double max_velocity_scale_factor);
         geometry_msgs::Pose transform_pose(geometry_msgs::Pose input_pose);
         void gripperStatusCallback(const std_msgs::String::ConstPtr& msg);
         void ftSensorCallback(const robotiq_ft_sensor::ft_sensor& msg);
         void robotExecuteCallback(const moveit_msgs::ExecuteTrajectoryActionResult::ConstPtr& msg);
+
+        void sensor1Callback(const std_msgs::Float32MultiArray::ConstPtr& msg);
+        void sensor2Callback(const std_msgs::Float32MultiArray::ConstPtr& msg);
+        void sensor3Callback(const std_msgs::Float32MultiArray::ConstPtr& msg);
+        ros::Subscriber sensor1_sub;
+        ros::Subscriber sensor2_sub;
+        ros::Subscriber sensor3_sub;
 };
 
 #endif /*MOVEIT_ROBOT_H*/

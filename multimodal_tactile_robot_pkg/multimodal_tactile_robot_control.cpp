@@ -67,8 +67,19 @@ void pick_up_object(moveit_robot &Robot, double down_move_dist = 0.05)
     // Robot moves down, grasps part and moves back to original position
     Robot.open_gripper();
     Robot.z_move(-down_move_dist, 0.8);
-    Robot.close_gripper();
+    //Robot.close_gripper();
+      Robot.close_gripper_touch();  
     Robot.z_move(down_move_dist, 1);
+}
+
+void handover_object_to_robot(moveit_robot &Robot, double down_move_dist = 0.05)
+{
+    // Robot moves down, grasps part and moves back to original position
+    Robot.open_gripper();
+   // Robot.z_move(-down_move_dist, 0.8);
+    //Robot.close_gripper();
+      Robot.close_gripper_h2r_handover();  
+    //Robot.z_move(down_move_dist, 1);
 }
 
 void set_down_object(moveit_robot &Robot, double down_move_dist = 0.03, double max_velocity_scale_factor = 1)
@@ -96,11 +107,13 @@ void bring_part_to_user(string bring_cmd, std::map<std::string, double> &targetJ
         bring_cmd=="bring_side_3" || bring_cmd=="bring_side_4" || \
         bring_cmd=="bring_back_slats" )
     {          
-        pick_up_object(Robot, 0.07);
+        pick_up_object(Robot, 0.02);
         // Move to user delivery position
         Robot.move_robot(targetJoints, bring_cmd, string("deliver_2_user"));
         // Move down, set down part, move up
-        set_down_object(Robot, 0.03, 0.5); //>>>>>> Add tactile gripper open stuff instead of this line
+        //set_down_object(Robot, 0.03, 0.5); //>>>>>> Add tactile gripper open stuff instead of this line
+        Robot.open_gripper_release();
+        
     }
     else if( bring_cmd=="bring_hand_screw_parts" || bring_cmd=="bring_legs" )
     {          
@@ -108,7 +121,8 @@ void bring_part_to_user(string bring_cmd, std::map<std::string, double> &targetJ
         // Move to user delivery position
         Robot.move_robot(targetJoints, bring_cmd, string("deliver_2_user"));
         // Move down, set down part, move up
-        set_down_object(Robot, 0.03, 0.5); //>>>>>> Add tactile gripper open stuff instead of this line
+        //set_down_object(Robot, 0.03, 0.5); //>>>>>> Add tactile gripper open stuff instead of this line
+        Robot.open_gripper_release();
     }
     else if( bring_cmd=="bring_seat_top" || bring_cmd=="bring_back_frame" )
     {
@@ -116,7 +130,8 @@ void bring_part_to_user(string bring_cmd, std::map<std::string, double> &targetJ
         // Move to user delivery position
         Robot.move_robot(targetJoints, bring_cmd, string("deliver_big_2_user"));
         // Move down, set down part, move up
-        set_down_object(Robot, 0.04, 0.5); //>>>>>> Add tactile gripper open stuff instead of this line
+        //set_down_object(Robot, 0.04, 0.5); //>>>>>> Add tactile gripper open stuff instead of this line
+        Robot.open_gripper_release();
     }
     else
     {
@@ -136,7 +151,8 @@ void take_assembly(string take_cmd, std::map<std::string, double> &targetJoints,
     if( take_cmd == "take_box" )
     {
         // Move down, pick assembly up, move up
-        pick_up_object(Robot, 0.07); //>>>>>> Add tactile gripper close stuff instead of this line
+        //pick_up_object(Robot, 0.07); //>>>>>> Add tactile gripper close stuff instead of this line
+        handover_object_to_robot(Robot, 0.07);
         // Move to position
         string deliver_cmd = "deliver_box";
         Robot.move_robot(targetJoints, deliver_cmd, deliver_cmd);
@@ -146,12 +162,13 @@ void take_assembly(string take_cmd, std::map<std::string, double> &targetJoints,
     else if ( take_cmd == "take_chair" )
     {
         // Move down, pick assembly up, move up
-        pick_up_object(Robot, 0.07); //>>>>>> Add tactile gripper close stuff instead of this line
+       // pick_up_object(Robot, 0.07); //>>>>>> Add tactile gripper close stuff instead of this line
+         handover_object_to_robot(Robot, 0.07);
         // Move to position
         string deliver_cmd = "deliver_chair";
         Robot.move_robot(targetJoints, deliver_cmd, deliver_cmd);
         // Move down, set down assembly, move up
-        set_down_object(Robot, 0.087, 0.5);
+        set_down_object(Robot, 0.03, 0.5);
     }
     else
     {
