@@ -1,5 +1,5 @@
 #!/usr/bin/env python3.7
-# Should be run from multimodal_human_robot_collaboration folder
+# Should be run from visuoTactileHRC folder
 
 from fileinput import filename
 import sys, os
@@ -20,7 +20,7 @@ from statistics import mean
 os.chdir(os.path.expanduser("~/catkin_ws/src/visuoTactileHRC/"))
 
 #Define tables: tables = [{name, [col1 cmd, col2 cmd, ...]}, ]
-tables_to_make = ['tasks', 'actions', 'users', 'episodes', 'assemble_box', 'assemble_chair', 'assemble_complex_box', 'assemble_complex_box_manual', 'stack_tower', 'future_action_predictions', 'robot_action_timings']
+tables_to_make = ['tasks', 'actions', 'users', 'episodes', 'assemble_box', 'assemble_chair', 'assemble_complex_box', 'assemble_complex_box_manual', 'stack_tower', 'move_stack', 'future_action_predictions', 'robot_action_timings']
 tables = [['tasks', ["task_id SERIAL PRIMARY KEY",
                     "task_name VARCHAR(255) NOT NULL UNIQUE"]+[f"{action} FLOAT" for action in ACTIONS]],
         ['actions', ["action_id SERIAL PRIMARY KEY",
@@ -65,6 +65,12 @@ tables = [['tasks', ["task_id SERIAL PRIMARY KEY",
                     "user_type VARCHAR(5)",
                     "prev_dependent BOOL"]],
         ['stack_tower', ["action_no SERIAL PRIMARY KEY",
+                    "action_id INTEGER REFERENCES actions(action_id)",
+                    "action_name VARCHAR(255) REFERENCES actions(action_name)",
+                    "default_time INTERVAL",
+                    "user_type VARCHAR(5)",
+                    "prev_dependent BOOL"]],
+        ['move_stack', ["action_no SERIAL PRIMARY KEY",
                     "action_id INTEGER REFERENCES actions(action_id)",
                     "action_name VARCHAR(255) REFERENCES actions(action_name)",
                     "default_time INTERVAL",
@@ -136,7 +142,7 @@ def make_tables(db, del_tab=True):
 def update_meta_data(db):
     try:
         for task in TASKS:
-            folder = './sam_nodes/scripts/models_parameters/'
+            folder = './multimodal_tactile_user_pkg/scripts/models_parameters/'
             file = f"metadata_tasks_{task}.csv"
             specific_name = file.split('metadata_tasks_')[1][0:-4]
             try:
@@ -163,11 +169,11 @@ def update_meta_data(db):
         print(e)
 
 def load_tables(db):
-    base_dir = os.getcwd()+'/sam_nodes/scripts/postgresql/'
+    base_dir = os.getcwd()+'/multimodal_tactile_user_pkg/scripts/postgresql/'
     for name in tables_to_make:
         try:
             db.csv_import(f"{base_dir}{name}.csv", tab_name=name)
-            if name in ('assemble_box', 'assemble_chair', 'stack_tower', 'assemble_complex_box', 'assemble_complex_box_manual'):
+            if name in ('assemble_box', 'assemble_chair', 'stack_tower', 'move_stack', 'assemble_complex_box', 'assemble_complex_box_manual'):
                 # Update times and action ids from actions table
                 sql = f"UPDATE {name} SET action_id = actions.action_id, default_time = actions.std_dur_s FROM actions WHERE actions.action_name = {name}.action_name"
                 db.gen_cmd(sql)

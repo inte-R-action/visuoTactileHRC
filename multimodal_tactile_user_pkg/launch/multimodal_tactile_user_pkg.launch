@@ -2,20 +2,16 @@
 
   <!-- By default, we are not in debug mode -->
   <arg name="test_mode" default="false" />
-  <arg name="task" default="assemble_complex_box" />
-  <arg name="classifier" default="one" />
-  <arg name="gui" default="false" />
+  <arg name="gui" default="true" />
 
-  <arg if="$(arg test_mode)" name="im_recog" default="false" />
   <arg if="$(arg test_mode)" name="postgresql" default="true" />
-  <arg if="$(arg test_mode)" name="robot_controller" default="true" />
+  <arg if="$(arg test_mode)" name="robot_controller" default="false" />
   <arg if="$(arg test_mode)" name="robot_controller_test" default="false" />
   <arg if="$(arg test_mode)" name="users_node" default="true" />
   <arg if="$(arg test_mode)" name="shimmerBase" default="false" />
   <arg if="$(arg test_mode)" name="fake_imu_node" default="false" />
-  <arg if="$(arg test_mode)" name="fake_sensors_node" default="true" />
+  <arg if="$(arg test_mode)" name="fake_sensors_node" default="false" />
 
-  <arg unless="$(arg test_mode)" name="im_recog" default="false" />
   <arg unless="$(arg test_mode)" name="postgresql" default="true" />
   <arg unless="$(arg test_mode)" name="robot_controller" default="true" />
   <arg unless="$(arg test_mode)" name="robot_controller_test" default="false" />
@@ -25,23 +21,17 @@
   <arg unless="$(arg test_mode)" name="fake_sensors_node" default="false" />
 
   <group if="$(arg gui)">
-    <node name="gui_node" pkg="multimodal_tactile_user_pkg" type="gui.py" respawn="false" output="screen" required="true" args="--task_type $(arg task) --classifier_type $(arg classifier)">
-    </node>
-  </group>
-
-  <group if="$(arg im_recog)">
-    <!-- <node name="im_recog_realsense" pkg="multimodal_tactile_user_pkg" type="im_recog_realsense.py" respawn="false" output="screen"> -->
-    <node name="screw_detector_realsense" pkg="multimodal_tactile_user_pkg" type="screw_detector_realsense.py" respawn="false" output="screen">
+    <node name="gui_node" pkg="multimodal_tactile_user_pkg" type="gui.py" respawn="false" output="screen" required="true">
     </node>
   </group>
 
   <group if="$(arg postgresql)">
-    <node name="postgresql_node" pkg="multimodal_tactile_user_pkg" type="postgresql_node.py" respawn="false" output="screen">
+    <node name="Database_node" pkg="multimodal_tactile_user_pkg" type="postgresql_node.py" respawn="false" output="screen">
     </node>
   </group>
 
   <group if="$(arg robot_controller)">
-    <node name="robot_controller" pkg="multimodal_tactile_user_pkg" type="robot_controller.py" respawn="false" output="screen">
+    <node name="robot_control_node" pkg="multimodal_tactile_user_pkg" type="robot_controller.py" respawn="false" output="screen">
     </node>
   </group>
 
@@ -51,12 +41,12 @@
   </group>
   
   <group if="$(arg shimmerBase)">
-    <node name="shimmerBase" pkg="multimodal_tactile_user_pkg" type="shimmerBase.py" respawn="false" output="screen" args="--task_type $(arg task) --classifier_type $(arg classifier)">
+    <node name="shimmerBase" pkg="multimodal_tactile_user_pkg" type="shimmerBase.py" respawn="false" output="screen">
     </node>
   </group>
   
   <group if="$(arg users_node)">
-    <node name="users_node" pkg="multimodal_tactile_user_pkg" type="users_node.py" respawn="false" output="screen" args="--task_type $(arg task) --classifier_type $(arg classifier)">
+    <node name="users_node" pkg="multimodal_tactile_user_pkg" type="users_node.py" respawn="false" output="screen">
     </node>
   </group>
 

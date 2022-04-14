@@ -13,14 +13,14 @@ from postgresql.database_funcs import database
 import pandas as pd
 import time
 from datetime import datetime, date, timedelta
-import pytz
-os.chdir(os.path.expanduser("~/catkin_ws/src/multimodal_human_robot_collaboration/"))
+os.chdir(os.path.expanduser("~/catkin_ws/src/visuoTactileHRC/"))
 
 database_stat = 1
 user_node_stat = 1
 start_trial = False
 next_action = False
 id_check = False
+stop = False
 
 
 def sys_stat_callback(data):
@@ -37,13 +37,18 @@ def sys_stat_callback(data):
 
 def sys_cmd_callback(msg):
     """callback for system command messages"""
-    global start_trial, next_action, id_check
+    global start_trial, next_action, id_check, stop
     if msg.data == 'start':
         start_trial = True
     elif msg.data == 'next_action':
-        next_action = True
+        if not stop:
+            next_action = True
+        else:
+            stop = False
     elif msg.data[0:19] == 'user_identification':
         id_check = True
+    elif msg.data == 'Stop':
+        stop = True
 
 
 def send_robot_home(predictor, move_obj):
@@ -61,6 +66,7 @@ def send_robot_home(predictor, move_obj):
 
 
 def id_check_position(predictor, move_obj):
+    return True
     print("Sending robot to check ID")
     # Wait for confirmation task has been received
     while (predictor.robot_status != 'id_check') and (not rospy.is_shutdown()):
@@ -222,7 +228,7 @@ class future_predictor():
 class robot_solo_task():
     def __init__(self):
         self.db = database()
-        self.task_name = "stack_tower"
+        self.task_name = "move_stack"
         self.task_overview = None
         self.next_action_id = 0
         self.next_action = None
@@ -264,7 +270,7 @@ class robot_solo_task():
 
 
 def robot_control_node():
-    global next_action
+    global next_action, id_check, stop
 
     # ROS node setup
     frame_id = 'robot_control_node'
@@ -296,7 +302,7 @@ def robot_control_node():
     rate = rospy.Rate(1)  # 1hz
     #db = database()
     home = False
-    home = send_robot_home(predictor, move_obj)
+    #home = send_robot_home(predictor, move_obj)
     print("Ready for trial to start")
     while (not start_trial) and (not rospy.is_shutdown()):
         diag_obj.publish(0, "Waiting for trial to start")
@@ -314,7 +320,7 @@ def robot_control_node():
                 predictor.future_estimates.robot_start_t ==
                 predictor.future_estimates.robot_start_t.min()]
 
-            if not row.empty:
+            if (not row.empty) and (not stop):
                 if ((row['robot_start_t'][0] <= pd.Timedelta(0)) or (next_action)) and (row['done'][0] is False):
                     # if time to next colab < action time start colab action
                     home = False

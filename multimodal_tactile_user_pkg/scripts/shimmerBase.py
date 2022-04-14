@@ -35,7 +35,7 @@ args = parser.parse_known_args()[0]
 frame_id = f'shimmerBase {args.user_name} {args.user_id} node'
 
 # Shimmer sensor connection params
-serialports = ['/dev/rfcomm3', '/dev/rfcomm4', '/dev/rfcomm5']
+serialports = ['/dev/rfcomm0', '/dev/rfcomm1', '/dev/rfcomm2']
 POSITIONS = ['Hand', 'Wrist', 'Arm']
 SHIM_IDs = ['F2:AF:44', 'F2:B6:ED', 'F2:C7:80']
 numsensors = len(serialports)
@@ -262,8 +262,9 @@ class shimmer():
         else:
             self._batt_perc = 100
 
-        if (self._batt_perc < batt_last) & (self._batt_perc is not None):
-            print(f"{self._location} sensor battery at {self._batt_perc}%")
+        if batt_last is not None:
+            if (self._batt_perc < batt_last):
+                print(f"{self._location} sensor battery at {self._batt_perc}%")
 
     def start(self):
         count = 0

@@ -31,8 +31,8 @@ except ModuleNotFoundError:
             return False
     rospy = ROS()
 
-os.chdir(os.path.expanduser("~/catkin_ws/src/multimodal_human_robot_collaboration/"))
-sys.path.insert(0, "./sam_nodes/scripts/vision_recognition") # Need to add path to "models" parent dir for pickler
+os.chdir(os.path.expanduser("~/catkin_ws/src/visuoTactileHRC/"))
+sys.path.insert(0, "./visuoTactileHRC/scripts/vision_recognition") # Need to add path to "models" parent dir for pickler
 
 def realsense_run():
     # ROS node setup

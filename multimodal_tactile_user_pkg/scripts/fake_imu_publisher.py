@@ -13,8 +13,7 @@ import csv
 from multimodal_tactile_custom_msgs.msg import diagnostics
 
 
-os.chdir(os.path.expanduser("~/catkin_ws/src/multimodal_human_robot_collaboration/sam_nodes/scripts/"))
-
+os.chdir(os.path.dirname(__file__))
 
 def sys_stat_callback(data):
     """callback for system status messages"""
@@ -25,7 +24,7 @@ def sys_stat_callback(data):
 
 def fakeIMUmain():
     print("-----Here we go-----")
-    frame_id = 'fakeIMUpub_node'
+    frame_id = 'fakeIMUpub_node_actions'
     rospy.init_node(frame_id, anonymous=True)
     diag_obj = diag_class(frame_id=frame_id, user_id=1, user_name='j', queue=10)
     rospy.Subscriber('SystemStatus', diagnostics, sys_stat_callback)

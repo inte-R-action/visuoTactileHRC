@@ -11,6 +11,11 @@ import tensorflow_addons as tfa
 import csv
 from global_data import GESTURES
 from std_msgs.msg import String
+import tensorflow as tf
+
+physical_devices = tf.config.experimental.list_physical_devices('GPU')
+if len(physical_devices) > 0:
+   tf.config.experimental.set_memory_growth(physical_devices[0], True)
 
 plt.ion()
 
@@ -32,11 +37,11 @@ class perception_module:
         self.imu_scales = None
 
         folder = './multimodal_tactile_user_pkg/scripts/models_parameters/'
-        self.gesture_classifier = load_model(folder+'')
-        self.screw_classifier = load_model(folder+'Screw In_model_1_2str_i(CCPCCP)s(CCPCCP)c(HHHD)_inclAllNull.h5')
-        self.allen_classifier = load_model(folder+'Allen In_model_1_2str_i(CCPCCP)s(CCPCCP)c(HHHD)_inclAllNull.h5')
-        self.hammer_classifier = load_model(folder+'Hammer_model_1_2str_i(CCPCCP)s(CCPCCP)c(HHHD)_inclAllNull.h5')
-        self.hand_classifier = load_model(folder+'Hand Screw In_model_1_2str_i(CCPCCP)s(CCPCCP)c(HHHD)_inclAllNull.h5')
+        self.gesture_classifier = load_model(folder+'gestures_classifier_TrainOnAll_1_CCPCCPHD_inclAllNull20220330-111512.h5')
+        self.screw_classifier = load_model(folder+'Screw In_classifier_TrainOnAll_allclassesincl_20220408-154326.h5')
+        self.allen_classifier = load_model(folder+'Allen In_classifier_TrainOnAll_allclassesincl_20220408-154310.h5')
+        self.hammer_classifier = load_model(folder+'Hammer_classifier_TrainOnAll_allclassesincl_20220408-154602.h5')
+        self.hand_classifier = load_model(folder+'Hand Screw In_classifier_TrainOnAll_allclassesincl_20220408-155333.h5')
         self.screw_pred = 0
         self.allen_pred = 0
         self.hammer_pred = 0
@@ -47,9 +52,23 @@ class perception_module:
         self.act_obj = act_class(frame_id=self.frame_id+'_actions', class_count=4, user_id=self.id, user_name=self.name, queue=10)
         self.ges_obj = act_class(frame_id=self.frame_id+'_gestures', class_count=len(GESTURES), user_id=self.id, user_name=self.name, queue=10)
 
+    def update_user_details(self, name=None, Id=None, frame_id=None):
+        if name:
+            self.name = name
+            self.act_obj.act_msg.UserName = self.name
+            self.ges_obj.act_msg.UserName = self.name
+        if Id:
+            self.id = Id
+            self.act_obj.act_msg.UserId = self.id
+            self.ges_obj.act_msg.UserId = self.id
+        if frame_id:
+            self.frame_id = frame_id
+            self.act_obj.act_msg.Header.frame_id = self.frame_id+'_actions'
+            self.ges_obj.act_msg.Header.frame_id = self.frame_id+'_gestures'
+
     def load_imu_scale_parameters(self, folder):
         # load scaling parameters
-        scale_file = folder + "imu_scale_params_winlen3_transitionsTrue_1v1_inclAllNull.csv" # file with normalisation parameters
+        scale_file = folder + "imu_scale_params_winlen3_transitionsTrue_1v1_gesturesTrue_inclAllNull.csv" # file with normalisation parameters
         with open(scale_file, newline='') as f:
             reader = csv.reader(f)
             data = np.array(list(reader))
@@ -73,7 +92,7 @@ class perception_module:
     def predict_gestures(self):
         predict_data = self.imu_data[np.newaxis, ...]
 
-        self.gesture_pred = self.gesture_classifier.predict(predict_data)
+        self.gesture_pred = self.gesture_classifier.predict(predict_data)[0]
         self.ges_obj.publish(self.gesture_pred)
 
     def add_imu_data(self, data, time):
