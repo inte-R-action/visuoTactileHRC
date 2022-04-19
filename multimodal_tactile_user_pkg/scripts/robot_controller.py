@@ -217,9 +217,13 @@ class future_predictor():
         dur = datetime.combine(date.min, end_t) - datetime.combine(date.min, self.robot_start_t)
 
         if (self.robot_status != "Done") and (self.robot_status != "Waiting") and (self.robot_status is not None):
+            if "move_stack" in self.robot_status:
+                comp_action = "move_stack"
+            else:
+                comp_action = str(self.robot_status)
             # Can publish new episode to sql
             epi_cols = ["date", "start_t", "end_t", "duration", "user_id", "hand", "task_name", "action_name", "action_no"]
-            epi_data = [(date_now, self.robot_start_t, end_t, dur, 0, '-', self.task_now, str(self.robot_status), self.action_no_now)]
+            epi_data = [(date_now, self.robot_start_t, end_t, dur, 0, '-', self.task_now, comp_action, self.action_no_now)]
             self.db.insert_data_list("Episodes", epi_cols, epi_data)
             self.task_now = None
             self.action_no_now = None
@@ -241,8 +245,13 @@ class robot_solo_task():
         self.task_overview = pd.DataFrame(task_actions, columns=task_cols)
 
         self.next_action_id = 0
-        self.next_action = self.task_overview.loc[
-            self.task_overview['action_no'] == self.next_action_id, ['action_name']].values[0][0]
+        if self.task_name == "move_stack":
+            self.next_action = self.task_overview.loc[
+                self.task_overview['action_no'] == self.next_action_id, ['action_name']].values[0][0]+"_"+str(self.next_action_id) #bodge to make all different
+        else:
+            self.next_action = self.task_overview.loc[
+                self.task_overview['action_no'] == self.next_action_id, ['action_name']].values[0][0]
+        
         self.next_action_time = pd.Timedelta(self.task_overview.loc[
             self.task_overview['action_no'] == self.next_action_id, ['default_time']].values[0][0])
 
@@ -251,10 +260,12 @@ class robot_solo_task():
     def update_progress(self):
         try:
             self.next_action_id += 1
-            self.next_action = self.task_overview.loc[
-                self.task_overview['action_no'] == self.next_action_id, ['action_name']].values[0][0]
-            self.next_action_time = pd.Timedelta(self.task_overview.loc[
-                self.task_overview['action_no'] == self.next_action_id, ['default_time']].values[0][0])
+            if self.task_name == "move_stack":
+                self.next_action = self.task_overview.loc[
+                    self.task_overview['action_no'] == self.next_action_id, ['action_name']].values[0][0]+"_"+str(self.next_action_id) #bodge to make all different
+            else:
+                self.next_action = self.task_overview.loc[
+                    self.task_overview['action_no'] == self.next_action_id, ['action_name']].values[0][0]
         except IndexError:
             print("Looks like user robot task is finished")
             self.finished = True

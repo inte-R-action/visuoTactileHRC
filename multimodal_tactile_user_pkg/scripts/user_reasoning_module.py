@@ -26,6 +26,7 @@ class reasoning_module:
         self.human_row_idxs = []
         self.output_override = []
         self.fut_act_pred_col_names = None
+        self.stop = False
 
         self.imu_pred = np.zeros(6) # class confs, t
         self.imu_pred_hist = np.empty(6) # class confs, t
@@ -152,7 +153,11 @@ class reasoning_module:
         self.curr_action_no = self.task_data.iloc[next_action_row_i]["action_no"]
         self.curr_action_type = self.task_data.iloc[next_action_row_i]["action_name"]
         if self.task_started:
-            self.usr_fdbck_pub.publish(f"Waiting for {self.curr_action_type} action")
+            if self.stop:
+                self.usr_fdbck_pub.publish(f"""STOP received. FORWARD to resume \n 
+                                            Waiting for {self.curr_action_type} action""")
+            else:
+                self.usr_fdbck_pub.publish(f"Waiting for {self.curr_action_type} action")
 
     def collate_episode(self):
         self.final_state_hist = np.vstack((self.final_state_hist, self.imu_state_hist[-3, :]))
@@ -200,7 +205,11 @@ class reasoning_module:
                 self.curr_action_no = self.task_data.iloc[next_action_row_i]["action_no"]
                 self.curr_action_type = self.task_data.iloc[next_action_row_i]["action_name"]
                 if self.task_started:
-                    self.usr_fdbck_pub.publish(f"Waiting for {self.curr_action_type} action")
+                    if self.stop:
+                        self.usr_fdbck_pub.publish(f"""STOP received. FORWARD to resume \n 
+                                                    Waiting for {self.curr_action_type} action""")
+                    else:
+                        self.usr_fdbck_pub.publish(f"Waiting for {self.curr_action_type} action")
 
         except IndexError:
             print(f"Looks like user {self.name} tasks are finished")
@@ -233,7 +242,11 @@ class reasoning_module:
         self.curr_action_no = self.task_data.iloc[next_action_row_i]["action_no"]
         self.curr_action_type = self.task_data.iloc[next_action_row_i]["action_name"]
         if self.task_started:
-            self.usr_fdbck_pub.publish(f"Waiting for {self.curr_action_type} action")
+            if self.stop:
+                self.usr_fdbck_pub.publish(f"""STOP received. FORWARD to resume \n 
+                                            Waiting for {self.curr_action_type} action""")
+            else:
+                self.usr_fdbck_pub.publish(f"Waiting for {self.curr_action_type} action")
 
         self.user_state = "continuing"
         return
@@ -289,10 +302,12 @@ class reasoning_module:
                         self.usr_fdbck_pub.publish(f"Sorry I'm behind, next action coming!")
                     elif gesture == "Stop":
                         self.cmd_publisher.publish('Stop')
-                        self.usr_fdbck_pub.publish(f"STOP received. FORWARD to resume")
+                        self.usr_fdbck_pub.publish("STOP received. FORWARD to resume")
+                        self.stop = True
                     elif (gesture == "Forward"):
                         self.cmd_publisher.publish('next_action')
-                        self.usr_fdbck_pub.publish(f"Resuming")
+                        self.usr_fdbck_pub.publish("Resuming")
+                        self.stop = False
                 else:
                     if (gesture == "Wave") and (self.name == "unknown"):
                         self.cmd_publisher.publish(f'user_identification_{self.id}')
