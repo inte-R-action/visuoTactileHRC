@@ -17,7 +17,7 @@ import rospy
 from diagnostic_msgs.msg import KeyValue
 from pub_classes import diag_class, move_class, act_class
 from multimodal_tactile_custom_msgs.msg import user_prediction, capability, diagnostics, current_action, screw_count
-from std_msgs.msg import String
+from std_msgs.msg import String, Bool
 from postgresql.database_funcs import database
 import os
 import pandas as pd
@@ -444,17 +444,23 @@ class GUI:
         for index, row in self.robot_tasks_data.iterrows():
             self.tasks.insert("", index=index, values=list(
                 row), tags=(row['user_id'],))
+        
+        # Hadover active indicator
+        self.handover_active = False
+        self.handover_label = Tk.Label(master=self.sys_frame, bg="grey", text="Handover Active",
+                                   padx=10, pady=3, borderwidth=2, relief="ridge")
+        self.handover_label.grid(row=5, column=0, sticky="nsew")
 
         # User Feedback Text
         self.usr_feedback_text = f"Please wait, system starting"
         self.usr_feedback = Tk.Text(master=self.sys_frame, height=2, font=("Courier", 14), wrap='word', width=20)
         self.usr_feedback.tag_configure("feedback_tag_center", justify='center')
-        self.usr_feedback.grid(row=5, column=0, sticky="nsew")
+        self.usr_feedback.grid(row=6, column=0, sticky="nsew")
         self.usr_feedback.insert(Tk.INSERT, self.usr_feedback_text)
 
         # Quit button
         self.quit_button = Tk.Button(master=self.sys_frame, text="Quit", command=self._quit, bg="red", padx=50, pady=20)
-        self.quit_button.grid(row=6, column=0, sticky="nsew")
+        self.quit_button.grid(row=7, column=0, sticky="nsew")
 
         # Adjust spacing of objects
         self.sys_frame.grid_columnconfigure(0, weight=1)
@@ -464,8 +470,9 @@ class GUI:
         self.sys_frame.grid_rowconfigure(2, weight=0)
         self.sys_frame.grid_rowconfigure(3, weight=0)
         self.sys_frame.grid_rowconfigure(4, weight=1)
-        self.sys_frame.grid_rowconfigure(5, weight=1)
-        self.sys_frame.grid_rowconfigure(6, weight=0)
+        self.sys_frame.grid_rowconfigure(5, weight=0)
+        self.sys_frame.grid_rowconfigure(6, weight=1)
+        self.sys_frame.grid_rowconfigure(7, weight=0)
 
     def _quit(self, sig=None, frame=None):
         self.cmd_publisher.publish('stop')
@@ -533,6 +540,8 @@ class GUI:
                     if user.task_data is not None:
                         for index, row in user.task_data.iterrows():
                             user.tasks.insert("", index=index, values=list(row), tags=(row['action_no'],))
+                            if row.done:
+                                user.tasks.tag_configure(index, background='light green')
                         try:
                             act_no = self.robot_tasks_data[self.robot_tasks_data['user_id'] == user.id]['next_r_action_no'].values[0]
                             user.tasks.tag_configure(act_no, background='yellow')
@@ -564,6 +573,11 @@ class GUI:
             # Update robot move cmd text
             self.robot_move.delete("1.0", Tk.END)
             self.robot_move.insert(Tk.INSERT, self.robot_move_text)
+
+            if self.handover_active:
+                self.handover_label.config(bg='green')
+            else:
+                self.handover_label.config(bg='red')
 
             # Update user feedback text
             self.usr_feedback.delete("1.0", Tk.END)
@@ -627,6 +641,9 @@ class GUI:
     def update_robot_move(self, data):
         self.robot_move_text = f"Robot Move Cmd: {data.data}"
     
+    def update_handover_active(self, data):
+        self.handover_active = data.data
+    
     def update_usr_feedback(self, data):
         if data.data != self.usr_feedback_text:
             self.usr_feedback_text = data.data
@@ -651,6 +668,7 @@ def run_gui():
     rospy.Subscriber('RobotStatus', String, gui.update_robot_stat)
     rospy.Subscriber('RobotMove', String, gui.update_robot_move)
     rospy.Subscriber('UserFeedback', String, gui.update_usr_feedback)
+    rospy.Subscriber('HandoverActive', Bool, gui.update_handover_active)
 
     gui.update_gui(diag_obj)
     Tk.mainloop()

@@ -76,9 +76,10 @@ class database():
         separator = ', '
         sql = f"INSERT INTO {table}({separator.join(columns)}) VALUES({data_ins})"
         try_again = True
+        tries = 0
         while try_again:
-            self.connect()
             try:
+                self.connect()
                 # execute the INSERT statement
                 self.cur.executemany(sql, data)
                 # commit the changes to the database
@@ -90,7 +91,9 @@ class database():
             except (Exception, psycopg2.DatabaseError) as error:
                 print(f"Insert db error: {error}")
                 print(f"Try again: {try_again}")
-                try_again = False
+                if tries > 2:
+                    try_again = False
+                tries += 1
                 self.disconnect()
                 if not try_again:
                     raise

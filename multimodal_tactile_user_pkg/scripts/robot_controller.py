@@ -208,7 +208,8 @@ class future_predictor():
             self.update_episodic()
             self.done = True
 
-        self.robot_status = msg.data
+        if msg.data != "waiting_for_handover":
+            self.robot_status = msg.data
 
     def update_episodic(self):
         """Add completed robot actions to episodic memory"""
@@ -317,10 +318,10 @@ def robot_control_node():
     print("Ready for trial to start")
     while (not start_trial) and (not rospy.is_shutdown()):
         diag_obj.publish(0, "Waiting for trial to start")
-        if id_check:
-            id_check_position(predictor, move_obj)
-            id_check = False
-        time.sleep(0.1)
+        # if id_check:
+        #     id_check_position(predictor, move_obj)
+        #     id_check = False
+        time.sleep(0.5)
 
     while not rospy.is_shutdown():
         try:

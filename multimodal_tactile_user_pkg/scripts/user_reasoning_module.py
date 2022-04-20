@@ -7,7 +7,7 @@ from postgresql.database_funcs import database
 from datetime import datetime, date, timedelta
 from global_data import ACTIONS, GESTURES
 import rospy
-from std_msgs.msg import String
+from std_msgs.msg import String, Bool
 
 plt.ion()
 
@@ -27,6 +27,7 @@ class reasoning_module:
         self.output_override = []
         self.fut_act_pred_col_names = None
         self.stop = False
+        self.handover_action = False
 
         self.imu_pred = np.zeros(6) # class confs, t
         self.imu_pred_hist = np.empty(6) # class confs, t
@@ -42,6 +43,8 @@ class reasoning_module:
         self.current_gesture = np.array([0, datetime.min, datetime.min]) # class, tStart, tEnd
         self.cmd_publisher = rospy.Publisher('ProcessCommands', String, queue_size=10)
         self.usr_fdbck_pub = rospy.Publisher('UserFeedback', String, queue_size=10)
+        self.handover_active_pub = rospy.Publisher('HandoverActive', Bool, queue_size=10)
+        self.robot_stat_sub = rospy.Subscriber("RobotStatus", String, self.robot_stat_callback)
         self.db = database()
 
     def update_user_details(self, name=None, Id=None, frame_id=None):
@@ -60,10 +63,13 @@ class reasoning_module:
                 if i < self.curr_action_no:
                     time = 0
                 else:
-                    if i == self.curr_action_no:
-                        t_left_action = min(max(row['default_time']-(datetime.now()-self.curr_action_start_t), timedelta()), row['default_time'])
+                    if row['user_type'] == 'robot':
+                        t_left_action = timedelta()
                     else:
-                        t_left_action = row['default_time']
+                        if i == self.curr_action_no:
+                            t_left_action = min(max(row['default_time']-(datetime.now()-self.curr_action_start_t), timedelta()), row['default_time'])
+                        else:
+                            t_left_action = row['default_time']
                     
                     if i > 0:
                         time = self.task_data.loc[i-1, 'time_left'] + t_left_action.total_seconds()
@@ -195,7 +201,7 @@ class reasoning_module:
                             next_action_row_i = self.task_data[self.task_data.done == False].index[0]
                             self.curr_action_start_t = datetime.now()
                         else:
-                            return "continuing"
+                            break
                     else:
                         self.task_data.iloc[next_action_row_i, self.task_data.columns.get_loc("started")] = 1
                         self.task_data.iloc[next_action_row_i, self.task_data.columns.get_loc("done")] = 1
@@ -300,7 +306,7 @@ class reasoning_module:
                     if gesture == "Left":
                         self.cmd_publisher.publish('next_action')
                         self.usr_fdbck_pub.publish(f"Sorry I'm behind, next action coming!")
-                    elif gesture == "Stop":
+                    elif (gesture == "Stop") and (not self.handover_action):
                         self.cmd_publisher.publish('Stop')
                         self.usr_fdbck_pub.publish("STOP received. FORWARD to resume")
                         self.stop = True
@@ -313,4 +319,26 @@ class reasoning_module:
                         self.cmd_publisher.publish(f'user_identification_{self.id}')
                     elif (gesture == "Forward") and (self.name != "unknown"):
                         print("Task starting")
+                        self.usr_fdbck_pub.publish("Task starting")
                         self.cmd_publisher.publish('start')
+    
+    def handover_active(self):
+        activate_handover = False
+
+        # check if stop gesture
+        if self.handover_action:
+            if (GESTURES[self.current_gesture[0]] == "Stop"):
+                activate_handover = True
+
+            # check if no action being performed
+            if (GESTURES[self.current_gesture[0]] == "Null"):
+                if (self.imu_pred_hist[-1, 1:-1] < 0.5).all():
+                    activate_handover = True
+
+        self.handover_active_pub.publish(activate_handover)
+    
+    def robot_stat_callback(self, msg):
+        if msg.data == "waiting_for_handover":
+            self.handover_action = True
+        else:
+            self.handover_action = False

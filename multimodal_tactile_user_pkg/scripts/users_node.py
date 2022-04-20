@@ -142,6 +142,8 @@ def current_action_callback(data, users):
         
         elif data.Header.frame_id[-9:] == '_gestures':
             users[i].task_reasoning.gesture_handler(np.argmax(data.ActionProbs), msg_time)
+        
+        users[i].task_reasoning.handover_active()
 
 
 def sys_stat_callback(data, users):
