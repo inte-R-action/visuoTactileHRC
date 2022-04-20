@@ -9,6 +9,7 @@
 #include <moveit_visual_tools/moveit_visual_tools.h>
 // #include <moveit/trajectory_processing/iterative_time_parameterization.h>
 #include "std_msgs/String.h"
+#include "std_msgs/Bool.h"
 // #include <iostream>
 // #include <unistd.h>
 // #include <map>
@@ -69,6 +70,8 @@ class moveit_robot
         std_msgs::String  gripper_msg;
         ros::Publisher gripper_cmds_pub;
         ros::Subscriber gripper_feedback_sub;
+        ros::Subscriber active_handover_sub;
+        bool handover_active;
 
         int robot_execute_code;
         ros::Subscriber robot_execute_sub;
@@ -98,6 +101,7 @@ class moveit_robot
         void gripperStatusCallback(const std_msgs::String::ConstPtr& msg);
         void ftSensorCallback(const robotiq_ft_sensor::ft_sensor& msg);
         void robotExecuteCallback(const moveit_msgs::ExecuteTrajectoryActionResult::ConstPtr& msg);
+        void handoverActiveCallback(const std_msgs::Bool::ConstPtr& msg);
 
         void sensor1Callback(const std_msgs::Float32MultiArray::ConstPtr& msg);
         void sensor2Callback(const std_msgs::Float32MultiArray::ConstPtr& msg);

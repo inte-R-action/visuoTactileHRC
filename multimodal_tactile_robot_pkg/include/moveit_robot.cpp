@@ -289,6 +289,9 @@ moveit_robot::moveit_robot(ros::NodeHandle* node_handle) : nh_(*node_handle), PL
     sensor1_sub = nh_.subscribe("icmData1", 100, &moveit_robot::sensor1Callback, this);
     sensor2_sub = nh_.subscribe("icmData2", 100, &moveit_robot::sensor2Callback, this);
     sensor3_sub = nh_.subscribe("icmData3", 100, &moveit_robot::sensor3Callback, this);
+
+    active_handover_sub = nh_.subscribe("HandoverActive", 100, &moveit_robot::handoverActiveCallback, this);
+    handover_active = false;
 }
 
 bool moveit_robot::plan_to_pose(geometry_msgs::Pose pose){
@@ -394,9 +397,10 @@ void moveit_robot::open_gripper(){
 void moveit_robot::open_gripper_release(){ // check this part again
     // Open Gripper
    // sleep(2);
-
-    while ( abs(gyro1_x) < 650 || abs(gyro1_y) < 650) {                                    
-            }  
+    robot_status_msg.data = "waiting_for_handover";
+    robot_status_pub.publish(robot_status_msg);
+    while ( (abs(gyro1_x) < 650 || abs(gyro1_y) < 650) or not handover_active ) {
+    }  
     
     gripper_msg.data = "release";
     while ((gripper_state != "release_completed") and ros::ok() )
@@ -421,9 +425,10 @@ void moveit_robot::close_gripper(){
 
 void moveit_robot::close_gripper_h2r_handover(){ //check this part
     // Close Gripper
-
-while (abs(gyro1_x) < 650 || abs(gyro1_y) < 650) {
-}
+    robot_status_msg.data = "waiting_for_handover";
+    robot_status_pub.publish(gripper_msg);
+    while ((abs(gyro1_x) < 650 || abs(gyro1_y) < 650) or not handover_active ) {
+    }
 
     gripper_msg.data = "grasp_touch";
     while ((gripper_state != "grasp_completed") and ros::ok())
@@ -575,4 +580,9 @@ void moveit_robot::ftSensorCallback(const robotiq_ft_sensor::ft_sensor& msg)
 void moveit_robot::robotExecuteCallback(const moveit_msgs::ExecuteTrajectoryActionResult::ConstPtr& msg)
 {
     robot_execute_code = msg->result.error_code.val;
+}
+
+void moveit_robot::handoverActiveCallback(const std_msgs::Bool::ConstPtr& msg)
+{
+    handover_active = msg->data;
 }
