@@ -383,6 +383,115 @@ void moveit_robot::move_robot(std::map<std::string, double> targetJoints, std::s
 
 }
 
+float Standard_deviation(float data[])
+{ 
+   float sum=0, mean=0, SD=0;
+  
+   for (int i = 0; i < 5; i++)
+   {
+      sum+=data[i];
+   }
+   mean=sum/5;
+
+   for (int i = 0; i < 5; i++)
+   {
+     SD += pow(data[i]-mean,2);
+   }
+
+   return sqrt(SD/4) ; 
+}
+
+
+float MeanAbsoluteValue(float data[])
+{
+  float sum=0.0;
+  for (int i = 0; i < 5; i++)
+  {
+     sum+=abs(data[i]);
+  }
+  return sum/5;
+}
+
+
+
+float SlopeSignChange(float data[], int threshold)
+{
+   int SSC=0, f=0;
+   for (int i = 1; i < 4; i++)
+   {
+      f= (data[i]-data[i-1])*(data[i]-data[i+1]);
+      if (abs(f)> threshold)
+      {
+         SSC +=1; 
+      }
+      
+   }
+   return SSC;
+}
+
+float WaveLength(float data[])
+{
+   float WL=0;
+   for (int i = 1; i < 5; i++)
+   {
+      WL+=abs(data[i]-data[i-1]);;
+   }
+   return WL;
+
+}
+
+float vector_multiply(float x[16], float w[16])
+{
+   float m=0.0;
+   for (int i = 0; i < 16; i++)
+   {
+      m+= x[i]*w[i];
+   }
+   
+  return m;
+}
+
+struct featurs
+{
+  float STD[4];
+  float MAV[4];
+  float SSC[4];
+  float WL[4];
+} ;
+
+struct featurs TimeDomain_featurs(float X[5][4])
+{
+
+  struct featurs F;
+  float data[5];
+  // loop over columns
+  for (int j = 0; j < 4; j++)
+  {
+    // pack each column  
+    for (int i = 0; i < 5; i++)
+    {
+       data[i]=X[i][j];
+    }
+    
+
+      F.STD[j]= Standard_deviation(data);
+      F.MAV[j]=MeanAbsoluteValue(data);
+      F.WL[j]=WaveLength(data);
+    
+      if (j<3)
+      {
+         F.SSC[j]=SlopeSignChange(data, 100000);
+      }
+      else if (j==3)
+      {
+         F.SSC[j]=SlopeSignChange(data, 1000);
+      }
+    
+ 
+  }
+  return F;
+}
+
 void moveit_robot::open_gripper(){
     // Open Gripper
     gripper_msg.data = "release";
@@ -399,8 +508,68 @@ void moveit_robot::open_gripper_release(){ // check this part again
    // sleep(2);
     robot_status_msg.data = "waiting_for_handover";
     robot_status_pub.publish(robot_status_msg);
-    while ( (abs(gyro1_x) < 650 || abs(gyro1_y) < 650) or not handover_active ) {
-    }  
+
+    struct featurs F;
+     float data[5][4];
+     float W[16]={5.53912510011300e-05,-4.19861192935636e-05,0.000178718186632322,-0.00363883357071507,0.000827983834304687,
+                  0.000287198850000341,0.00109976416480187,0.00295133662758069,0.00512020083294659,0.00872748268046810,
+                  0.0558717827904135,0.0135793012566664,-9.68429836641676e-05,-9.99232071299944e-05,-0.000173631295409429,0.00315533624169383};
+     float XF[16];
+     bool handover_event=false;
+        
+     float activation=0;        
+     float initial_pressure=pressure2;
+     
+      // first read 5 data points
+      for (int i = 0; i < 5; i++)
+       {
+         data[i][0]=gyro2_x;
+         data[i][1]=gyro2_y;
+         data[i][2]=gyro2_z;
+         data[i][3]=(pressure2-initial_pressure);
+       }
+    
+    while (!handover_event)
+      {
+
+           F= TimeDomain_featurs(data);
+         
+           XF[0]=F.STD[0]; XF[1]=F.STD[1]; XF[2]=F.STD[2]; XF[3]=F.STD[3];
+           XF[4]=F.MAV[0]; XF[5]=F.MAV[1]; XF[6]=F.MAV[2]; XF[7]=F.MAV[3];
+           XF[8]=F.SSC[0]; XF[9]=F.SSC[1]; XF[10]=F.SSC[2];XF[11]=F.SSC[3];
+           XF[12]=F.WL[0]; XF[13]=F.WL[1]; XF[14]=F.WL[2]; XF[15]=F.WL[3];
+
+
+           activation = vector_multiply(XF,W);
+
+           if (activation>3)
+           {
+              handover_event =true;
+              cout << "handover event detected"<<endl; 
+              cout << "activation is: " << activation << endl;
+             
+           }
+
+           else
+           {
+              cout<< "activation is: " << activation << endl;
+           }
+           
+          
+              for (int m = 1; m < 5; m++)
+              {
+                    for (int k = 0; k < 4; k++)
+                    {
+                       data[m-1][k]=data[m][k];
+                    }   
+              }
+          
+             data[4][0]=gyro2_x;
+             data[4][1]=gyro2_y;
+             data[4][2]=gyro2_z;
+             data[4][3]=(pressure2-initial_pressure);
+       }
+    
     
     gripper_msg.data = "release";
     while ((gripper_state != "release_completed") and ros::ok() )
