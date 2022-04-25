@@ -506,8 +506,6 @@ void moveit_robot::open_gripper(){
 void moveit_robot::open_gripper_release(){ // check this part again
     // Open Gripper
    // sleep(2);
-    robot_status_msg.data = "waiting_for_handover";
-    robot_status_pub.publish(robot_status_msg);
 
     struct featurs F;
      float data[5][4];
@@ -529,56 +527,54 @@ void moveit_robot::open_gripper_release(){ // check this part again
          data[i][3]=(pressure2-initial_pressure);
        }
     
-    while (!handover_event)
-      {
+    robot_status_msg.data = "waiting_for_handover";
+    robot_status_pub.publish(robot_status_msg);
 
-           F= TimeDomain_featurs(data);
-         
-           XF[0]=F.STD[0]; XF[1]=F.STD[1]; XF[2]=F.STD[2]; XF[3]=F.STD[3];
-           XF[4]=F.MAV[0]; XF[5]=F.MAV[1]; XF[6]=F.MAV[2]; XF[7]=F.MAV[3];
-           XF[8]=F.SSC[0]; XF[9]=F.SSC[1]; XF[10]=F.SSC[2];XF[11]=F.SSC[3];
-           XF[12]=F.WL[0]; XF[13]=F.WL[1]; XF[14]=F.WL[2]; XF[15]=F.WL[3];
+    while (!handover_event || !handover_active )
+    {
 
+        F = TimeDomain_featurs(data);
+ 
+        XF[0]=F.STD[0]; XF[1]=F.STD[1]; XF[2]=F.STD[2]; XF[3]=F.STD[3];
+        XF[4]=F.MAV[0]; XF[5]=F.MAV[1]; XF[6]=F.MAV[2]; XF[7]=F.MAV[3];
+        XF[8]=F.SSC[0]; XF[9]=F.SSC[1]; XF[10]=F.SSC[2];XF[11]=F.SSC[3];
+        XF[12]=F.WL[0]; XF[13]=F.WL[1]; XF[14]=F.WL[2]; XF[15]=F.WL[3];
 
-           activation = vector_multiply(XF,W);
+        activation = vector_multiply(XF,W);
 
-           if (activation>3)
-           {
-              handover_event =true;
-              cout << "handover event detected"<<endl; 
-              cout << "activation is: " << activation << endl;
-             
-           }
-
-           else
-           {
-              cout<< "activation is: " << activation << endl;
-           }
-           
+        if (activation > 3)
+        {
+           handover_event = true;
+           cout << "handover event detected"<<endl; 
+           cout << "activation is: " << activation << endl;
+        }
+        else
+        {
+           handover_event = false;
+           //cout<< "activation is: " << activation << endl;
+        }
           
-              for (int m = 1; m < 5; m++)
-              {
-                    for (int k = 0; k < 4; k++)
-                    {
-                       data[m-1][k]=data[m][k];
-                    }   
-              }
-          
-             data[4][0]=gyro2_x;
-             data[4][1]=gyro2_y;
-             data[4][2]=gyro2_z;
-             data[4][3]=(pressure2-initial_pressure);
-       }
-    
+        for (int m = 1; m < 5; m++)
+        {
+           for (int k = 0; k < 4; k++)
+           {
+              data[m-1][k]=data[m][k];
+           }   
+        }
+      
+        data[4][0]=gyro2_x;
+        data[4][1]=gyro2_y;
+        data[4][2]=gyro2_z;
+        data[4][3]=(pressure2-initial_pressure);
+    }
     
     gripper_msg.data = "release";
-    while ((gripper_state != "release_completed") and ros::ok() )
+    while ( (gripper_state != "release_completed") and ros::ok() )
     {
            gripper_cmds_pub.publish(gripper_msg);
     }
     gripper_msg.data = "completion acknowledged";
     gripper_cmds_pub.publish(gripper_msg);
-   
 }
 
 void moveit_robot::close_gripper(){
@@ -595,8 +591,8 @@ void moveit_robot::close_gripper(){
 void moveit_robot::close_gripper_h2r_handover(){ //check this part
     // Close Gripper
     robot_status_msg.data = "waiting_for_handover";
-    robot_status_pub.publish(gripper_msg);
-    while ((abs(gyro1_x) < 650 || abs(gyro1_y) < 650) or not handover_active ) {
+    robot_status_pub.publish(robot_status_msg);
+    while ( (abs(gyro1_x) < 650 || abs(gyro1_y) < 650) || !handover_active ) {
     }
 
     gripper_msg.data = "grasp_touch";

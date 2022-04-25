@@ -107,7 +107,7 @@ void bring_part_to_user(string bring_cmd, std::map<std::string, double> &targetJ
         bring_cmd=="bring_side_3" || bring_cmd=="bring_side_4" || \
         bring_cmd=="bring_back_slats" )
     {          
-        pick_up_object(Robot, 0.03);
+        pick_up_object(Robot, 0.08);
         // Move to user delivery position
         Robot.move_robot(targetJoints, bring_cmd, string("deliver_2_user"));
         // Move down, set down part, move up
@@ -117,7 +117,7 @@ void bring_part_to_user(string bring_cmd, std::map<std::string, double> &targetJ
     }
     else if( bring_cmd=="bring_hand_screw_parts" || bring_cmd=="bring_legs" )
     {          
-        pick_up_object(Robot, 0.05);
+        pick_up_object(Robot, 0.11);
         // Move to user delivery position
         Robot.move_robot(targetJoints, bring_cmd, string("deliver_2_user"));
         // Move down, set down part, move up
@@ -126,7 +126,7 @@ void bring_part_to_user(string bring_cmd, std::map<std::string, double> &targetJ
     }
     else if( bring_cmd=="bring_seat_top" )
     {
-        pick_up_object(Robot, 0.02);
+        pick_up_object(Robot, 0.07);
         // Move to user delivery position
         Robot.move_robot(targetJoints, bring_cmd, string("deliver_2_user"));
         // Move down, set down part, move up
@@ -135,7 +135,7 @@ void bring_part_to_user(string bring_cmd, std::map<std::string, double> &targetJ
     }
     else if( bring_cmd=="bring_back_frame" )
     {
-        pick_up_object(Robot, 0.04);
+        pick_up_object(Robot, 0.07);
         // Move to user delivery position
         Robot.move_robot(targetJoints, bring_cmd, string("deliver_2_user"));
         // Move down, set down part, move up
@@ -248,7 +248,8 @@ int move_blocks(string bring_cmd, std::map<std::string, double> &targetJoints, m
         //Robot.move_group.move();
 
         // Move down, pick block up, move up
-        pick_up_object(Robot, 0.05);
+        float stack_height = 0.07;
+        pick_up_object(Robot, stack_height);
 
         if (stack_pos == 1){
             stack_pos = 2;
@@ -261,7 +262,7 @@ int move_blocks(string bring_cmd, std::map<std::string, double> &targetJoints, m
         Robot.move_robot(targetJoints, bring_cmd, jnt_pos_name);
 
         // Move down, set down block, move up
-        set_down_object(Robot, 0.05, 0.05);
+        set_down_object(Robot, stack_height, 0.1);
     }
     else {
         cout << "Failed to perform IK plan" << endl;
