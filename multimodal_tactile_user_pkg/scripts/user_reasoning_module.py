@@ -130,7 +130,10 @@ class reasoning_module:
 
     def next_action_override(self):
         # Get last updated robot actions
-        col_names, robot_actions = self.db.query_table('robot_action_timings', 'all')
+        try:
+            col_names, robot_actions = self.db.query_table('robot_action_timings', 'all')
+        except Exception:
+            col_names, robot_actions = self.db.query_table('robot_action_timings', 'all')
         last_robot_stats = pd.DataFrame(robot_actions, columns=col_names)
 
         # Get last action not completed by robot
@@ -296,6 +299,7 @@ class reasoning_module:
                 self.pub_episode(start_t, end_t, gesture)
 
             # Start tracking new gesture
+            last_gesture =  GESTURES[self.current_gesture[0]]
             self.current_gesture[0] = ges_idx
             self.current_gesture[1] = msg_time
             self.current_gesture[2] = msg_time
@@ -306,7 +310,7 @@ class reasoning_module:
                     if gesture == "Left":
                         self.cmd_publisher.publish('next_action')
                         self.usr_fdbck_pub.publish(f"Sorry I'm behind, next action coming!")
-                    elif (gesture == "Stop") and (not self.handover_action):
+                    elif (gesture == "Stop") and (last_gesture == "Stop") and (not self.handover_action):
                         self.cmd_publisher.publish('Stop')
                         self.usr_fdbck_pub.publish("STOP received. FORWARD to resume")
                         self.stop = True
