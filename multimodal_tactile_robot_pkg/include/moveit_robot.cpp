@@ -589,10 +589,13 @@ void moveit_robot::close_gripper(){
 }
 
 void moveit_robot::close_gripper_h2r_handover(){ //check this part
+    float initial_pressure=pressure2;
+
     // Close Gripper
     robot_status_msg.data = "waiting_for_handover";
     robot_status_pub.publish(robot_status_msg);
-    while ( (abs(gyro1_x) < 650 || abs(gyro1_y) < 650) || !handover_active ) {
+
+    while (abs(pressure2-initial_pressure) < 75 || !handover_active ) {
     }
 
     gripper_msg.data = "grasp_touch";
