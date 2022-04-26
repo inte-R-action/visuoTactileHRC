@@ -574,8 +574,11 @@ class GUI:
             self.robot_move.delete("1.0", Tk.END)
             self.robot_move.insert(Tk.INSERT, self.robot_move_text)
 
-            if self.handover_active:
-                self.handover_label.config(bg='green')
+            if self.robot_stat_text == "Robot status: waiting_for_handover":
+                if self.handover_active:
+                    self.handover_label.config(bg='green')
+                else:
+                    self.handover_label.config(bg='yellow')
             else:
                 self.handover_label.config(bg='red')
 

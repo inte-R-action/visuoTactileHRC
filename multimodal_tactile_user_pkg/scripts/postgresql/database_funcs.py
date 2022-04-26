@@ -255,27 +255,36 @@ class database():
 
         sql = f"SELECT * FROM {name}"
         output = None
-        try:
-            self.connect()
-            self.cur.execute(sql)
-            if rows == 'all':
-                output = self.cur.fetchall()
-            elif rows =='one':
-                output = self.cur.fetchone() 
-            elif type(rows) == int:
-                output = self.cur.fetchmany(rows)
-            else:
-                raise TypeError('query_table rows input should be \'all\', \'one\' or int')
+        try_again = True
+        tries = 0
+        while try_again:
+            try:
+                self.connect()
+                self.cur.execute(sql)
+                if rows == 'all':
+                    output = self.cur.fetchall()
+                elif rows =='one':
+                    output = self.cur.fetchone() 
+                elif type(rows) == int:
+                    output = self.cur.fetchmany(rows)
+                else:
+                    raise TypeError('query_table rows input should be \'all\', \'one\' or int')
 
-            col_names = []
-            for i in self.cur.description:
-                col_names.append(i[0])
+                col_names = []
+                for i in self.cur.description:
+                    col_names.append(i[0])
+                try_again = False
+            except (Exception, psycopg2.DatabaseError) as error:
+                print(f"Query db error: {error}")
+                if tries > 2:
+                    try_again = False
+                print(f"Try again: {try_again}")
+                tries += 1
+                self.disconnect()
+                if not try_again:
+                    raise
 
-        except (Exception, psycopg2.DatabaseError) as error:
-            print(error)
-            raise
-        finally:
-            self.disconnect()
+        self.disconnect()
 
         return col_names, output
 
@@ -286,7 +295,7 @@ class database():
 if __name__ == '__main__':
     db = database()
     #db.connect()
-    #db.create_table('test1', ["vendor_id SERIAL PRIMARY KEY", "vendor_name VARCHAR(255) NOT NULL"])
+    db.create_table('test1', ["vendor_id SERIAL PRIMARY KEY", "vendor_name VARCHAR(255) NOT NULL"])
     # db.insert_data_list("parts", ["part_name"], [
     #     ('AKM Semiconductor Inc.',),
     #     ('Asahi Glass Co Ltd.',),
@@ -306,4 +315,4 @@ if __name__ == '__main__':
     print(db.query_table("episodes", 'all'))
     #db.disconnect()
     #db.table_list()
-    #db.remove_table('test1')
+    db.remove_table('test1')

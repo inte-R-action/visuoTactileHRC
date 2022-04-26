@@ -8,10 +8,10 @@ action_no,action_id,action_name,default_time,user_type,prev_dependent
 6,2,allen_in,00:00:14,human,t
 7,2,allen_in,00:00:14,human,f
 8,24,bring_back_slats,00:00:24,robot,f
-9,0,screw_in,00:00:09,human,t
-10,0,screw_in,00:00:09,human,f
-11,0,screw_in,00:00:09,human,f
-12,0,screw_in,00:00:09,human,f
+9,0,screw_in,00:00:10,human,t
+10,0,screw_in,00:00:10,human,f
+11,0,screw_in,00:00:10,human,f
+12,0,screw_in,00:00:10,human,f
 13,25,bring_legs,00:00:15,robot,f
 14,18,hand_screw_in,00:00:08,human,t
 15,18,hand_screw_in,00:00:08,human,f

@@ -1,5 +1,5 @@
 action_id,action_name,std_dur_s,user_type
-0,screw_in,9,human
+0,screw_in,10,human
 1,screw_out,15,human
 2,allen_in,14,human
 3,allen_out,15,human
@@ -34,5 +34,5 @@ action_id,action_name,std_dur_s,user_type
 32,Right,0,human
 33,Stop,0,human
 34,Null,0,human
-35,move_stack,15,robot
+35,move_stack,13,robot
 36,waiting_for_handover,0,robot

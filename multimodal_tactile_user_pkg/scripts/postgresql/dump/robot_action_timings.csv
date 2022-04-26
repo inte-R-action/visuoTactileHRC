@@ -1,3 +1,3 @@
 user_id,user_name,task_name,last_completed_action_no,next_r_action_no,robot_start_t
-1,Gorkem,assemble_chair,8,13,00:00:21
-0,robot,move_stack,0,1,00:00:15
+1,James,assemble_complex_box,27,27,00:00:00
+0,robot,move_stack,6,7,00:00:13
