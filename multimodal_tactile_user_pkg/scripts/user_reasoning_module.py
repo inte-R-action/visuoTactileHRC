@@ -314,7 +314,7 @@ class reasoning_module:
                         self.cmd_publisher.publish('Stop')
                         self.usr_fdbck_pub.publish("STOP received. FORWARD to resume")
                         self.stop = True
-                    elif (gesture == "Forward"):
+                    elif (gesture == "Forward") and self.stop:
                         self.cmd_publisher.publish('next_action')
                         self.usr_fdbck_pub.publish("Resuming")
                         self.stop = False
